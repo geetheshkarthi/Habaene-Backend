@@ -72,7 +72,7 @@ GRANT ALL ON public.suppliers TO service_role;
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admins manage suppliers" ON public.suppliers;
 CREATE POLICY "Admins manage suppliers" ON public.suppliers FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-DROP TRIGGER IF EXISTS trg_suppliers_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_suppliers_updated ON public.suppliers;
 CREATE TRIGGER trg_suppliers_updated BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- ============ PURCHASE ORDERS ============
 CREATE TABLE IF NOT EXISTS public.purchase_orders (
@@ -96,7 +96,7 @@ GRANT ALL ON public.purchase_orders TO service_role;
 ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admins manage purchase orders" ON public.purchase_orders;
 CREATE POLICY "Admins manage purchase orders" ON public.purchase_orders FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-DROP TRIGGER IF EXISTS trg_po_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_po_updated ON public.purchase_orders;
 CREATE TRIGGER trg_po_updated BEFORE UPDATE ON public.purchase_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- ============ PURCHASE ORDER ITEMS ============
 CREATE TABLE IF NOT EXISTS public.purchase_order_items (
@@ -141,7 +141,7 @@ DROP POLICY IF EXISTS "Public reads active drops" ON public.product_drops;
 CREATE POLICY "Public reads active drops" ON public.product_drops FOR SELECT TO anon, authenticated USING (status = 'active');
 DROP POLICY IF EXISTS "Admins manage drops" ON public.product_drops;
 CREATE POLICY "Admins manage drops" ON public.product_drops FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-DROP TRIGGER IF EXISTS trg_drops_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_drops_updated ON public.product_drops;
 CREATE TRIGGER trg_drops_updated BEFORE UPDATE ON public.product_drops FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- ============ PRODUCT RECOMMENDATIONS ============
 CREATE TABLE IF NOT EXISTS public.product_recommendations (
@@ -182,7 +182,7 @@ DROP POLICY IF EXISTS "Public reads matching rules" ON public.product_matching_r
 CREATE POLICY "Public reads matching rules" ON public.product_matching_rules FOR SELECT TO anon, authenticated USING (is_active = true);
 DROP POLICY IF EXISTS "Admins manage matching rules" ON public.product_matching_rules;
 CREATE POLICY "Admins manage matching rules" ON public.product_matching_rules FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-DROP TRIGGER IF EXISTS trg_matching_rules_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_matching_rules_updated ON public.product_matching_rules;
 CREATE TRIGGER trg_matching_rules_updated BEFORE UPDATE ON public.product_matching_rules FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- ============ SHIPPING ZONES ============
 CREATE TABLE IF NOT EXISTS public.shipping_zones (
@@ -220,9 +220,9 @@ DROP POLICY IF EXISTS "Admins manage shipping zones" ON public.shipping_zones;
 CREATE POLICY "Admins manage shipping zones" ON public.shipping_zones FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 DROP POLICY IF EXISTS "Admins manage shipping methods" ON public.shipping_methods;
 CREATE POLICY "Admins manage shipping methods" ON public.shipping_methods FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-DROP TRIGGER IF EXISTS trg_shipping_zones_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_shipping_zones_updated ON public.shipping_zones;
 CREATE TRIGGER trg_shipping_zones_updated BEFORE UPDATE ON public.shipping_zones FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-DROP TRIGGER IF EXISTS trg_shipping_methods_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_shipping_methods_updated ON public.shipping_methods;
 CREATE TRIGGER trg_shipping_methods_updated BEFORE UPDATE ON public.shipping_methods FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- ============ TAX RULES ============
 CREATE TABLE IF NOT EXISTS public.tax_rules (
@@ -244,7 +244,7 @@ DROP POLICY IF EXISTS "Public reads tax rules" ON public.tax_rules;
 CREATE POLICY "Public reads tax rules" ON public.tax_rules FOR SELECT TO anon, authenticated USING (is_active = true);
 DROP POLICY IF EXISTS "Admins manage tax rules" ON public.tax_rules;
 CREATE POLICY "Admins manage tax rules" ON public.tax_rules FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-DROP TRIGGER IF EXISTS trg_tax_rules_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_tax_rules_updated ON public.tax_rules;
 CREATE TRIGGER trg_tax_rules_updated BEFORE UPDATE ON public.tax_rules FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- ============ CUSTOMER ACTIVITY ============
 CREATE TABLE IF NOT EXISTS public.customer_activity (
@@ -350,5 +350,5 @@ GRANT ALL ON public.custom_reports TO service_role;
 ALTER TABLE public.custom_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users manage own reports" ON public.custom_reports;
 CREATE POLICY "Users manage own reports" ON public.custom_reports FOR ALL TO authenticated USING (created_by = auth.uid() OR public.is_admin()) WITH CHECK (created_by = auth.uid() OR public.is_admin());
-DROP TRIGGER IF EXISTS trg_custom_reports_updated ON public.update_updated_at_column;
+DROP TRIGGER IF EXISTS trg_custom_reports_updated ON public.custom_reports;
 CREATE TRIGGER trg_custom_reports_updated BEFORE UPDATE ON public.custom_reports FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
