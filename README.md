@@ -37,19 +37,33 @@ Every third-party integration degrades cleanly when its keys are absent — chec
    on conflict do nothing;
    ```
 
-## Deployment
+## Deployment (Cloudflare Workers)
 
-Deploy this app on its own (not alongside the static storefront). It runs on any Nitro-supported
-host — Vercel, Netlify, Cloudflare, Render, Railway, or plain Node. No `preset` is hardcoded in
-`vite.config.ts`, so Nitro auto-detects the host from the deploy environment; set `NITRO_PRESET`
-explicitly if it picks the wrong one.
+Deploy this app on its own (not alongside the static storefront). It targets Cloudflare Workers via
+Nitro's `cloudflare_module` preset (set in `vite.config.ts`), with `wrangler.jsonc` describing the
+Worker. Set `NITRO_PRESET` to switch targets (Vercel, Netlify, Node, etc.) if you ever move off
+Cloudflare — the codebase has no Node-only APIs, so it isn't locked in.
 
 ```sh
-npm run build
+npx wrangler login              # once, opens a browser to authorize this machine
+npm run cf:deploy               # builds, then `wrangler deploy`
 ```
 
-Set every env var from `.env.example` on the host (Supabase ones are required; the rest are
-optional per the degrade-cleanly behavior above). Register provider webhooks once keys exist:
+Set every env var from `.env.example` as a Worker secret (Supabase ones are required; the rest are
+optional per the degrade-cleanly behavior above — add them later as you get each provider's keys):
+
+```sh
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put SUPABASE_PUBLISHABLE_KEY
+# repeat for RESEND_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RAZORPAY_*, SLICE_*, DHL_*, DELHIVERY_*
+```
+
+`VITE_*` vars (public, inlined into the client bundle at build time) must be present in `.env`
+(or the shell) when you run `npm run cf:deploy` — they're baked into the build, not read by the
+Worker at runtime, so `wrangler secret put` doesn't apply to them.
+
+Register provider webhooks against your Worker's URL once keys exist:
 
 - Stripe: `POST /api/public/stripe-webhook`
 - Razorpay: `POST /api/public/razorpay-webhook`
