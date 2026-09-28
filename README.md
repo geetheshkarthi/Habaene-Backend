@@ -40,9 +40,10 @@ Every third-party integration degrades cleanly when its keys are absent — chec
 ## Deployment (Cloudflare Workers)
 
 Deploy this app on its own (not alongside the static storefront). It targets Cloudflare Workers via
-Nitro's `cloudflare_module` preset (set in `vite.config.ts`), with `wrangler.jsonc` describing the
-Worker. Set `NITRO_PRESET` to switch targets (Vercel, Netlify, Node, etc.) if you ever move off
-Cloudflare — the codebase has no Node-only APIs, so it isn't locked in.
+Cloudflare's official `@cloudflare/vite-plugin` (officially supports TanStack Start SSR — set in
+`vite.config.ts`), with `wrangler.jsonc` describing the Worker. `main` in `wrangler.jsonc` points at
+TanStack Start's `virtual:tanstack-start-server-entry` virtual module rather than a real file —
+that's expected, the plugin resolves it through Vite at build time.
 
 ```sh
 npx wrangler login              # once, opens a browser to authorize this machine

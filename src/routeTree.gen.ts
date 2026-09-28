@@ -42,6 +42,8 @@ import { Route as AuthenticatedAdminWarehousesRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminWebhooksRouteImport } from './routes/_authenticated/admin/webhooks'
 import { Route as AuthenticatedAdminWishlistsRouteImport } from './routes/_authenticated/admin/wishlists'
 import { Route as ApiPublicCheckoutRouteImport } from './routes/api/public/checkout'
+import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
+import { Route as ApiPublicSliceWebhookRouteImport } from './routes/api/public/slice-webhook'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as AuthenticatedAdminAnalyticsIndexRouteImport } from './routes/_authenticated/admin/analytics/index'
@@ -252,6 +254,17 @@ const ApiPublicCheckoutRoute = ApiPublicCheckoutRouteImport.update({
   path: '/api/public/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRazorpayWebhookRoute =
+  ApiPublicRazorpayWebhookRouteImport.update({
+    id: '/api/public/razorpay-webhook',
+    path: '/api/public/razorpay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicSliceWebhookRoute = ApiPublicSliceWebhookRouteImport.update({
+  id: '/api/public/slice-webhook',
+  path: '/api/public/slice-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   id: '/api/public/stripe-webhook',
   path: '/api/public/stripe-webhook',
@@ -408,6 +421,8 @@ export interface FileRoutesByFullPath {
   '/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
   '/admin/wishlists': typeof AuthenticatedAdminWishlistsRoute
   '/api/public/checkout': typeof ApiPublicCheckoutRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/slice-webhook': typeof ApiPublicSliceWebhookRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -462,6 +477,8 @@ export interface FileRoutesByTo {
   '/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
   '/admin/wishlists': typeof AuthenticatedAdminWishlistsRoute
   '/api/public/checkout': typeof ApiPublicCheckoutRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/slice-webhook': typeof ApiPublicSliceWebhookRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -519,6 +536,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
   '/_authenticated/admin/wishlists': typeof AuthenticatedAdminWishlistsRoute
   '/api/public/checkout': typeof ApiPublicCheckoutRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/slice-webhook': typeof ApiPublicSliceWebhookRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/api/v1/$': typeof ApiV1SplatRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -576,6 +595,8 @@ export interface FileRouteTypes {
     | '/admin/webhooks'
     | '/admin/wishlists'
     | '/api/public/checkout'
+    | '/api/public/razorpay-webhook'
+    | '/api/public/slice-webhook'
     | '/api/public/stripe-webhook'
     | '/api/v1/$'
     | '/admin/'
@@ -630,6 +651,8 @@ export interface FileRouteTypes {
     | '/admin/webhooks'
     | '/admin/wishlists'
     | '/api/public/checkout'
+    | '/api/public/razorpay-webhook'
+    | '/api/public/slice-webhook'
     | '/api/public/stripe-webhook'
     | '/api/v1/$'
     | '/admin'
@@ -686,6 +709,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/webhooks'
     | '/_authenticated/admin/wishlists'
     | '/api/public/checkout'
+    | '/api/public/razorpay-webhook'
+    | '/api/public/slice-webhook'
     | '/api/public/stripe-webhook'
     | '/api/v1/$'
     | '/_authenticated/admin/'
@@ -717,6 +742,8 @@ export interface RootRouteChildren {
   RobotsTxtRoute: typeof RobotsTxtRoute
   SitemapXmlRoute: typeof SitemapXmlRoute
   ApiPublicCheckoutRoute: typeof ApiPublicCheckoutRoute
+  ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
+  ApiPublicSliceWebhookRoute: typeof ApiPublicSliceWebhookRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiPublicV1SplatRoute: typeof ApiPublicV1SplatRoute
@@ -953,6 +980,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/checkout'
       fullPath: '/api/public/checkout'
       preLoaderRoute: typeof ApiPublicCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/razorpay-webhook': {
+      id: '/api/public/razorpay-webhook'
+      path: '/api/public/razorpay-webhook'
+      fullPath: '/api/public/razorpay-webhook'
+      preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/slice-webhook': {
+      id: '/api/public/slice-webhook'
+      path: '/api/public/slice-webhook'
+      fullPath: '/api/public/slice-webhook'
+      preLoaderRoute: typeof ApiPublicSliceWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/stripe-webhook': {
@@ -1236,6 +1277,8 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsTxtRoute: RobotsTxtRoute,
   SitemapXmlRoute: SitemapXmlRoute,
   ApiPublicCheckoutRoute: ApiPublicCheckoutRoute,
+  ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
+  ApiPublicSliceWebhookRoute: ApiPublicSliceWebhookRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
   ApiPublicV1SplatRoute: ApiPublicV1SplatRoute,
