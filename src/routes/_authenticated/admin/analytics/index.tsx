@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -51,7 +51,13 @@ function AnalyticsPage() {
   });
   const [dayOfWeekFilter, setDayOfWeekFilter] = useState<number>(1); // Monday
 
-  const range = resolveDateRange(preset, custom);
+  // Memoized: resolveDateRange() builds a fresh object (with a fresh `now`)
+  // every call. Without memoizing, every render produced a new range.end
+  // timestamp, which every useQuery below embeds in its queryKey — refetching
+  // on every render, which re-renders the page, forever. That flooded the
+  // browser with hundreds of duplicate analytics RPC calls and starved every
+  // other request behind them (this page runs 9 queries at once).
+  const range = useMemo(() => resolveDateRange(preset, custom), [preset, custom]);
 
   const summaryQ = useQuery({
     queryKey: ["analytics-summary", range.start, range.end],

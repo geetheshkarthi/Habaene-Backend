@@ -4,18 +4,9 @@
 -- =============================================================================
 
 -- ============ EXTEND ENUMS ============
--- Extend order_status to include 'packed'
-ALTER TYPE public.order_status ADD VALUE IF NOT EXISTS 'packed' AFTER 'processing';
-
--- Extend app_role to include all staff roles
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'content_manager';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'seo_manager';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sales_manager';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'inventory_manager';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'order_manager';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'customer_support';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'marketing_manager';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'finance_manager';
+-- Moved to 20260825000000_extend_enums.sql (must commit in its own
+-- transaction before this file can use the new enum values — see that
+-- file's header comment).
 
 -- New enums
 DO $$ BEGIN
@@ -1160,10 +1151,10 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
     oi.product_name,
     SUM(oi.quantity)::bigint AS units_sold,
     SUM(oi.subtotal) AS revenue,
-    COALESCE((SELECT COUNT(*) FROM public.returns r
-              JOIN public.orders ro ON ro.id = r.order_id
+    COALESCE((SELECT COUNT(DISTINCT r.id) FROM public.returns r
+              JOIN public.order_items roi ON roi.order_id = r.order_id
               WHERE r.created_at BETWEEN p_start AND p_end
-                AND ro.id IN (SELECT o.id FROM public.orders o WHERE o.id = oi.order_id)), 0)::bigint AS refund_count,
+                AND roi.product_id = oi.product_id), 0)::bigint AS refund_count,
     COALESCE((SELECT ROUND(AVG(rating)::numeric,2) FROM public.reviews rv WHERE rv.product_id = oi.product_id AND rv.status = 'approved'), 0) AS avg_rating,
     COALESCE((SELECT COUNT(*) FROM public.product_views pv WHERE pv.product_id = oi.product_id AND pv.created_at BETWEEN p_start AND p_end), 0)::bigint AS view_count
   FROM public.order_items oi

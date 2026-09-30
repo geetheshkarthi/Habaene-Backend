@@ -33,10 +33,11 @@ export function useIsAdmin() {
     queryKey: ["is-admin", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("has_role", {
-        _user_id: user!.id,
-        _role: "admin",
-      });
+      // has_role(user_id, role) is intentionally not callable by `authenticated`
+      // (see supabase/migrations/20260824131624_...sql) — it took an arbitrary
+      // user_id, letting any signed-in user probe other users' roles. is_admin()
+      // checks auth.uid() only, so it's safe to expose and is what stays granted.
+      const { data, error } = await supabase.rpc("is_admin");
       if (error) throw error;
       return data === true;
     },

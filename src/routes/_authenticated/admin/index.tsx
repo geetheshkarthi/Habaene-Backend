@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -74,7 +75,11 @@ function Dashboard() {
     queryFn: getDashboardStats,
     staleTime: 60_000,
   });
-  const range = resolveDateRange("last_30_days");
+  // Memoized for the same reason as analytics/index.tsx and analytics-ui.ts's
+  // useDateRange(): resolveDateRange() builds a fresh object every call, and
+  // this page's queryFn closure captures it fresh each render even though
+  // the queryKey itself stays stable.
+  const range = useMemo(() => resolveDateRange("last_30_days"), []);
   const series = useQuery({
     queryKey: ["revenue-series", "last_30_days"],
     queryFn: () => getRevenueSeries(range, "day"),
