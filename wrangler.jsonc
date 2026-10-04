@@ -3,7 +3,13 @@
   "name": "habane-backend",
   "main": "virtual:tanstack-start-server-entry",
   "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
+  // nodejs_compat alone only shims Node APIs (crypto, buffer, etc.) — it does
+  // NOT auto-populate process.env from Worker secrets/vars. This codebase
+  // reads secrets via process.env["X"] everywhere (written for Node/Vercel),
+  // so nodejs_compat_populate_process_env is required too, or every secret
+  // looks "missing" despite being correctly attached (confirmed via
+  // `wrangler secret list` while health checks still reported them absent).
+  "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
   "assets": {
     "directory": "dist/client",
     "binding": "ASSETS"
