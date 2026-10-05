@@ -65,13 +65,13 @@ function segmentOf(c: CustomerListRow): Segment {
 
 const SEGMENT_META: Record<Segment, { label: string; icon: typeof Sparkles }> = {
   new: { label: "New", icon: UserPlus },
-  returning: { label: "Returning", icon: RefreshCw },
+  returning: { label: "Regular", icon: RefreshCw },
   inactive: { label: "Inactive", icon: Clock3 },
 };
 
 const TABS: { value: Segment | "all"; label: string }[] = [
   { value: "all", label: "All Customers" },
-  { value: "returning", label: "Returning" },
+  { value: "returning", label: "Regular" },
   { value: "new", label: "New" },
   { value: "inactive", label: "Inactive (30d+)" },
 ];
