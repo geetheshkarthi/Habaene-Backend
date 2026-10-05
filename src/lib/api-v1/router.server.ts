@@ -128,6 +128,16 @@ export async function dispatch(request: Request, path: string): Promise<Response
         return ok(await h.getFaqItems(url));
       }
 
+      case "homepage": {
+        if (method !== "GET") return methodNotAllowed(method);
+        return ok(await h.getPublicHomepage());
+      }
+
+      case "journal": {
+        if (method !== "GET") return methodNotAllowed(method);
+        return second ? ok(await h.getJournalBySlug(second)) : ok(await h.getJournalList(url));
+      }
+
       case "reviews": {
         if (method === "GET" && second === "stats") return ok(await h.getReviewStats(url));
         if (method === "GET") return ok(await h.getReviews(url));

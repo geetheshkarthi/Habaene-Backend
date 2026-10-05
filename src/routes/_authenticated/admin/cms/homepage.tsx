@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getHomepage, updateHomepage, type CmsHomepage } from "@/lib/api/cms";
+import { getHomepage, updateHomepage, type CmsHomepage, type HeroSlide } from "@/lib/api/cms";
 import { getProducts } from "@/lib/api/products";
+import { uploadProductImage } from "@/lib/api/storage";
+import { imageUrl } from "@/lib/config";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect, type ReactNode } from "react";
+import { X } from "lucide-react";
+
+const MAX_HERO_SLIDES = 10;
+const EMPTY_SLIDE: HeroSlide = { image_url: "", eyebrow: "", heading: "", sub: "" };
 
 export const Route = createFileRoute("/_authenticated/admin/cms/homepage")({
   head: () => ({ meta: [{ title: "Homepage — HABÄNE Admin" }] }),
@@ -17,12 +23,8 @@ export const Route = createFileRoute("/_authenticated/admin/cms/homepage")({
 });
 
 type FormState = {
-  hero_heading: string;
-  hero_subheading: string;
-  hero_cta_text: string;
-  hero_cta_url: string;
-  hero_images: string;
-  hero_video_url: string;
+  hero_slides: HeroSlide[];
+  homepage_reviews_count: number;
   featured_product_ids: string[];
   promotional_sections: string;
   editorial_sections: string;
@@ -33,12 +35,8 @@ type FormState = {
 };
 
 const EMPTY: FormState = {
-  hero_heading: "",
-  hero_subheading: "",
-  hero_cta_text: "",
-  hero_cta_url: "",
-  hero_images: "",
-  hero_video_url: "",
+  hero_slides: [],
+  homepage_reviews_count: 8,
   featured_product_ids: [],
   promotional_sections: "[]",
   editorial_sections: "[]",
@@ -93,12 +91,8 @@ function HomepageEditor() {
     if (!data) return;
     const news = (data.newsletter_section ?? {}) as Record<string, unknown>;
     setForm({
-      hero_heading: data.hero_heading ?? "",
-      hero_subheading: data.hero_subheading ?? "",
-      hero_cta_text: data.hero_cta_text ?? "",
-      hero_cta_url: data.hero_cta_url ?? "",
-      hero_images: (data.hero_images ?? []).join("\n"),
-      hero_video_url: data.hero_video_url ?? "",
+      hero_slides: data.hero_slides ?? [],
+      homepage_reviews_count: data.homepage_reviews_count ?? 8,
       featured_product_ids: data.featured_product_ids ?? [],
       promotional_sections: JSON.stringify(data.promotional_sections ?? [], null, 2),
       editorial_sections: JSON.stringify(data.editorial_sections ?? [], null, 2),
@@ -112,15 +106,8 @@ function HomepageEditor() {
   const save = useMutation({
     mutationFn: () => {
       const payload: Partial<CmsHomepage> = {
-        hero_heading: form.hero_heading || null,
-        hero_subheading: form.hero_subheading || null,
-        hero_cta_text: form.hero_cta_text || null,
-        hero_cta_url: form.hero_cta_url || null,
-        hero_images: form.hero_images
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        hero_video_url: form.hero_video_url || null,
+        hero_slides: form.hero_slides,
+        homepage_reviews_count: Math.max(1, Math.trunc(form.homepage_reviews_count) || 8),
         featured_product_ids: form.featured_product_ids,
         promotional_sections: parseJson(form.promotional_sections, []),
         editorial_sections: parseJson(form.editorial_sections, []),
@@ -158,6 +145,37 @@ function HomepageEditor() {
     }));
   }
 
+  function addSlide() {
+    setForm((f) =>
+      f.hero_slides.length >= MAX_HERO_SLIDES ? f : { ...f, hero_slides: [...f.hero_slides, { ...EMPTY_SLIDE }] },
+    );
+  }
+
+  function updateSlide(index: number, patch: Partial<HeroSlide>) {
+    setForm((f) => ({
+      ...f,
+      hero_slides: f.hero_slides.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  }
+
+  function removeSlide(index: number) {
+    setForm((f) => ({ ...f, hero_slides: f.hero_slides.filter((_, i) => i !== index) }));
+  }
+
+  const [uploadingSlide, setUploadingSlide] = useState<number | null>(null);
+
+  async function uploadSlideImage(index: number, file: File) {
+    setUploadingSlide(index);
+    try {
+      const path = await uploadProductImage(file, { productSlug: "homepage-hero", kind: "gallery" });
+      updateSlide(index, { image_url: path });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingSlide(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -171,58 +189,93 @@ function HomepageEditor() {
         }
       />
 
-      <Section title="Hero">
+      <Section
+        title="Hero carousel"
+        hint={`Up to ${MAX_HERO_SLIDES} slides. Each has its own image, small eyebrow text above the title, the title itself, and the sub text shown beside it.`}
+      >
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Heading</Label>
-            <Input
-              value={form.hero_heading}
-              onChange={(e) => setForm((f) => ({ ...f, hero_heading: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Subheading</Label>
-            <Input
-              value={form.hero_subheading}
-              onChange={(e) => setForm((f) => ({ ...f, hero_subheading: e.target.value }))}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>CTA text</Label>
-              <Input
-                value={form.hero_cta_text}
-                onChange={(e) => setForm((f) => ({ ...f, hero_cta_text: e.target.value }))}
-              />
+          {form.hero_slides.map((slide, i) => (
+            <div key={i} className="space-y-3 rounded-md border border-border p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground">Slide {i + 1}</p>
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(i)}>
+                  <X className="h-4 w-4" />
+                  Remove
+                </Button>
+              </div>
+              <div className="flex items-center gap-3">
+                {slide.image_url && (
+                  <img
+                    src={imageUrl(slide.image_url) ?? undefined}
+                    alt=""
+                    className="h-16 w-16 rounded-md border border-border object-cover"
+                  />
+                )}
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Image</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingSlide === i}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void uploadSlideImage(i, file);
+                    }}
+                  />
+                  {uploadingSlide === i && <p className="text-xs text-muted-foreground">Uploading…</p>}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Small text above title (eyebrow)</Label>
+                <Input
+                  value={slide.eyebrow}
+                  onChange={(e) => updateSlide(i, { eyebrow: e.target.value })}
+                  placeholder="01 / SIGNATURE CARRY"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Title</Label>
+                <Input
+                  value={slide.heading}
+                  onChange={(e) => updateSlide(i, { heading: e.target.value })}
+                  placeholder="Travel Intelligently."
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Right-side text</Label>
+                <Textarea
+                  rows={2}
+                  value={slide.sub}
+                  onChange={(e) => updateSlide(i, { sub: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>CTA URL</Label>
-              <Input
-                value={form.hero_cta_url}
-                onChange={(e) => setForm((f) => ({ ...f, hero_cta_url: e.target.value }))}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Hero images — one URL per line</Label>
-            <Textarea
-              rows={4}
-              className="font-mono text-xs"
-              value={form.hero_images}
-              onChange={(e) => setForm((f) => ({ ...f, hero_images: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Hero video URL</Label>
-            <Input
-              value={form.hero_video_url}
-              onChange={(e) => setForm((f) => ({ ...f, hero_video_url: e.target.value }))}
-            />
-          </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={addSlide} disabled={form.hero_slides.length >= MAX_HERO_SLIDES}>
+            + Add slide ({form.hero_slides.length}/{MAX_HERO_SLIDES})
+          </Button>
         </div>
       </Section>
 
-      <Section title="Featured Products" hint="Pick the products the homepage should showcase.">
+      <Section title="Reviews" hint="How many approved reviews the homepage review strip shows.">
+        <div className="max-w-xs space-y-2">
+          <Label>Number of reviews to show</Label>
+          <Input
+            type="number"
+            min={1}
+            max={20}
+            value={form.homepage_reviews_count}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, homepage_reviews_count: Number(e.target.value) }))
+            }
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="Featured Products"
+        hint="Pick the products the homepage's product grid should showcase, and how many — leave empty to show the default live catalogue."
+      >
         {productList.length === 0 ? (
           <p className="text-sm text-muted-foreground">No products available.</p>
         ) : (

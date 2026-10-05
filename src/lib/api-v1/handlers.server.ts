@@ -1064,6 +1064,106 @@ export async function getFaqItems(url: URL) {
   return { faqs: data ?? [] };
 }
 
+/* ─── Homepage ──────────────────────────────────────────────────────────── */
+
+/**
+ * Backs the storefront's hero carousel, review-count and featured-products
+ * choices — all previously hardcoded in app.js regardless of what the
+ * already-real cms_homepage admin editor saved.
+ */
+export async function getPublicHomepage() {
+  const { data, error } = await db
+    .from("cms_homepage")
+    .select("hero_slides, featured_product_ids, homepage_reviews_count")
+    .eq("singleton", true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+
+  const featuredIds: string[] = data?.featured_product_ids ?? [];
+  let featured_products: unknown[] = [];
+  if (featuredIds.length) {
+    const { data: products } = await supabaseAdmin
+      .from("products")
+      .select(PRODUCT_COLUMNS)
+      .in("id", featuredIds)
+      .eq("is_published", true)
+      .is("deleted_at", null);
+    const byId = new Map((products ?? []).map((p) => [(p as { id: string }).id, p]));
+    // Preserve the admin's chosen order rather than the DB's.
+    featured_products = featuredIds
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((row) => toPublicProduct(row as unknown as ProductRow));
+  }
+
+  return {
+    hero_slides: data?.hero_slides ?? [],
+    reviews_count: data?.homepage_reviews_count ?? 8,
+    featured_products,
+  };
+}
+
+/* ─── Journal ───────────────────────────────────────────────────────────── */
+
+function readTimeFor(content: string): string {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / 200))} min read`;
+}
+
+const JOURNAL_LIST_COLUMNS =
+  "id, slug, title, excerpt, featured_image, author_name, category, tags, published_at, content";
+
+export async function getJournalList(url: URL) {
+  const category = url.searchParams.get("category");
+  let q = db
+    .from("journal_articles")
+    .select(JOURNAL_LIST_COLUMNS)
+    .eq("status", "published")
+    .order("published_at", { ascending: false });
+  if (category) q = q.eq("category", category);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  const articles = (data ?? []).map((a: { content: string } & Record<string, unknown>) => {
+    const { content, ...rest } = a;
+    return { ...rest, read_time: readTimeFor(content) };
+  });
+  return { articles };
+}
+
+export async function getJournalBySlug(slug: string) {
+  const { data, error } = await db
+    .from("journal_articles")
+    .select(
+      "id, slug, title, content, featured_image, video_url, author_name, category, tags, published_at, view_count",
+    )
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw notFound(`No journal article with slug "${slug}"`);
+
+  await db
+    .from("journal_articles")
+    .update({ view_count: (data.view_count ?? 0) + 1 })
+    .eq("id", data.id);
+
+  const { data: related } = await db
+    .from("journal_articles")
+    .select(JOURNAL_LIST_COLUMNS)
+    .eq("status", "published")
+    .neq("id", data.id)
+    .order("published_at", { ascending: false })
+    .limit(3);
+
+  return {
+    article: { ...data, read_time: readTimeFor(data.content) },
+    related: (related ?? []).map((a: { content: string } & Record<string, unknown>) => {
+      const { content, ...rest } = a;
+      return { ...rest, read_time: readTimeFor(content) };
+    }),
+  };
+}
+
 /* ─── Reviews ───────────────────────────────────────────────────────────── */
 
 export async function getReviews(url: URL) {
