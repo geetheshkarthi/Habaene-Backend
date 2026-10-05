@@ -1054,7 +1054,7 @@ export async function getReviews(url: URL) {
   let q = db
     .from("reviews")
     .select(
-      "id, product_id, customer_name, rating, title, body, is_verified_purchase, helpful_count, photos, created_at",
+      "id, product_id, customer_name, rating, title, body, is_verified_purchase, helpful_count, photos, created_at, products(name, slug, card_image)",
       { count: "exact" },
     )
     .in("status", ["approved", "featured"])
