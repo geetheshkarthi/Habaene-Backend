@@ -152,6 +152,42 @@ export const sendShippingNotificationFn = createServerFn({ method: "POST" })
     return sendEmail({ to: order.customer_email, ...mail });
   });
 
+/** Send a free-form message to one or more customers (admin only). */
+export const sendCustomerMessageFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        customerIds: z.array(z.string().uuid()).min(1),
+        subject: z.string().trim().min(1).max(200),
+        body: z.string().trim().min(1).max(5000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getStoreSettings, legalFooter } = await import("./checkout.server");
+    const { customerMessageEmail, sendEmail } = await import("./email.server");
+
+    const { data: customers, error } = await supabaseAdmin
+      .from("customers")
+      .select("id, email")
+      .in("id", data.customerIds)
+      .is("deleted_at", null);
+    if (error) throw new Error(error.message);
+    if (!customers?.length) throw new Error("No matching customers");
+
+    const settings = await getStoreSettings();
+    const mail = customerMessageEmail({ subject: data.subject, body: data.body }, legalFooter(settings));
+
+    const results = await Promise.allSettled(
+      customers.map((c) => sendEmail({ to: c.email, ...mail })),
+    );
+    const sent = results.filter((r) => r.status === "fulfilled" && r.value.sent).length;
+    return { sent, total: customers.length };
+  });
+
 /** Notify the customer about a return status change (admin only). */
 export const sendReturnUpdateFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

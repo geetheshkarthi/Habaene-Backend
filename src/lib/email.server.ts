@@ -157,6 +157,21 @@ export function returnStatusEmail(
   };
 }
 
+/** Free-form message an admin sends from the Customers page (individually or in bulk). */
+export function customerMessageEmail(
+  msg: { subject: string; body: string },
+  legal: LegalFooter,
+) {
+  return {
+    subject: msg.subject,
+    html: layout(
+      msg.subject,
+      `<p style="font-size:14px;line-height:1.7;white-space:pre-wrap">${msg.body}</p>`,
+      `${legal.legal_company_name} · ${legal.support_email}`,
+    ),
+  };
+}
+
 export function newsletterWelcomeEmail(email: string, legal: LegalFooter) {
   return {
     subject: "Welcome to the Habané list",
