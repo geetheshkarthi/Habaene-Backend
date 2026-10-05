@@ -1116,6 +1116,7 @@ const reviewSchema = z.object({
   title: z.string().optional(),
   body: z.string().min(10),
   order_id: z.string().uuid().optional(),
+  photos: z.array(z.string().url()).max(5).optional(),
 });
 
 export async function submitReview(body: unknown) {
@@ -1127,6 +1128,7 @@ export async function submitReview(body: unknown) {
     title,
     body: reviewBody,
     order_id,
+    photos,
   } = parse(reviewSchema, body);
   let isVerified = false;
   if (order_id) {
@@ -1150,12 +1152,43 @@ export async function submitReview(body: unknown) {
       body: reviewBody,
       order_id: order_id ?? null,
       is_verified_purchase: isVerified,
+      photos: photos ?? [],
       status: "pending",
     })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
   return { id: data.id, status: "pending", message: "Review submitted and awaiting approval" };
+}
+
+const MAX_REVIEW_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_REVIEW_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+/** Stores a customer-submitted review photo in the public product-images
+ * bucket (under reviews/) and returns its public URL. Runs server-side with
+ * the service role so anon customers never need direct storage write access. */
+export async function uploadReviewPhoto(request: Request) {
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) throw badRequest("No file provided");
+  if (!ALLOWED_REVIEW_PHOTO_TYPES.has(file.type)) {
+    throw badRequest("Only JPEG, PNG, WEBP or GIF images are allowed");
+  }
+  if (file.size > MAX_REVIEW_PHOTO_BYTES) {
+    throw badRequest("Image must be 5MB or smaller");
+  }
+
+  const ext = file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1];
+  const path = `reviews/${crypto.randomUUID()}.${ext}`;
+  const bytes = await file.arrayBuffer();
+
+  const { error } = await supabaseAdmin.storage
+    .from("product-images")
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message);
+
+  const base = process.env["SUPABASE_URL"];
+  return { url: `${base}/storage/v1/object/public/product-images/${path}` };
 }
 
 /* ─── Redirects ─────────────────────────────────────────────────────────── */

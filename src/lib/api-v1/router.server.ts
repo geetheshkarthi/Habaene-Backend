@@ -126,6 +126,7 @@ export async function dispatch(request: Request, path: string): Promise<Response
       case "reviews": {
         if (method === "GET" && second === "stats") return ok(await h.getReviewStats(url));
         if (method === "GET") return ok(await h.getReviews(url));
+        if (method === "POST" && second === "photos") return ok(await h.uploadReviewPhoto(request), 201);
         if (method === "POST" && !second) return ok(await h.submitReview(await body(request)), 201);
         return methodNotAllowed(method);
       }
