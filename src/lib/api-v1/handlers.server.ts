@@ -972,20 +972,32 @@ const wishlistSchema = z.object({
 
 export async function addToWishlist(body: unknown) {
   const { customer_email, product_id, variant_id, product_name } = parse(wishlistSchema, body);
-  const { error } = await db
+  const { data, error } = await db
     .from("wishlists")
     .upsert(
       { customer_email, product_id, variant_id: variant_id ?? null, product_name },
       { onConflict: "customer_email,product_id" },
-    );
+    )
+    .select()
+    .single();
   if (error) throw new Error(error.message);
-  return { added: true };
+  return data;
 }
 
 export async function removeFromWishlist(id: string) {
   const { error } = await db.from("wishlists").delete().eq("id", id);
   if (error) throw new Error(error.message);
   return { removed: true };
+}
+
+/** The signed-in customer's own saved items — used to render heart state on the storefront. */
+export async function getWishlistForCustomer(customerEmail: string) {
+  const { data, error } = await db
+    .from("wishlists")
+    .select("*")
+    .eq("customer_email", customerEmail);
+  if (error) throw new Error(error.message);
+  return { items: data ?? [] };
 }
 
 /* ─── Announcements ─────────────────────────────────────────────────────── */

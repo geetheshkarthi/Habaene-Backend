@@ -98,6 +98,11 @@ export async function dispatch(request: Request, path: string): Promise<Response
       }
 
       case "wishlist": {
+        if (method === "GET" && !second) {
+          const email = url.searchParams.get("customer_email");
+          if (!email) return fail(400, "validation_error", "customer_email is required");
+          return ok(await h.getWishlistForCustomer(email));
+        }
         if (method === "POST" && !second) return ok(await h.addToWishlist(await body(request)), 201);
         if (method === "DELETE" && second) return ok(await h.removeFromWishlist(second));
         return fail(404, "not_found", "Unknown wishlist endpoint");
