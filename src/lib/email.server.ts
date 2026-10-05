@@ -141,14 +141,17 @@ export function shippingNotificationEmail(
 }
 
 export function returnStatusEmail(
-  r: { order_number: string; customer_name: string; status: string },
+  r: { order_number: string; customer_name: string; status: string; message?: string },
   legal: LegalFooter,
 ) {
   return {
     subject: `Return update for order ${r.order_number}`,
     html: layout(
       "Return update",
-      `<p style="font-size:14px;line-height:1.7">Dear ${r.customer_name}, the return linked to order <strong>${r.order_number}</strong> is now <strong>${r.status.replace(/_/g, " ")}</strong>.</p>`,
+      `<p style="font-size:14px;line-height:1.7">Dear ${r.customer_name}, the return linked to order <strong>${r.order_number}</strong> is now <strong>${r.status.replace(/_/g, " ")}</strong>.</p>` +
+        (r.message
+          ? `<p style="font-size:14px;line-height:1.7">${r.message.replace(/\n/g, "<br/>")}</p>`
+          : ""),
       `${legal.legal_company_name} · ${legal.support_email}`,
     ),
   };

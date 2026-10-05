@@ -49,6 +49,18 @@ export async function getOrder(id: string): Promise<OrderWithItems> {
   ) as OrderWithItems;
 }
 
+/** Exact order-number lookup, used when creating a return on a customer's behalf. */
+export async function getOrderByNumber(orderNumber: string): Promise<OrderWithItems | null> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .eq("order_number", orderNumber.trim())
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as OrderWithItems | null;
+}
+
 export async function getOrdersByCustomerEmail(email: string): Promise<OrderWithItems[]> {
   return unwrap(
     await supabase

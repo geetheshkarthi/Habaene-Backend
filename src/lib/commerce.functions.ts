@@ -155,7 +155,11 @@ export const sendShippingNotificationFn = createServerFn({ method: "POST" })
 /** Notify the customer about a return status change (admin only). */
 export const sendReturnUpdateFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ returnId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({ returnId: z.string().uuid(), message: z.string().trim().max(2000).optional() })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -175,6 +179,7 @@ export const sendReturnUpdateFn = createServerFn({ method: "POST" })
         order_number: ret.order_number ?? "—",
         customer_name: ret.customer_email,
         status: ret.status,
+        ...(data.message ? { message: data.message } : {}),
       },
       legalFooter(settings),
     );
