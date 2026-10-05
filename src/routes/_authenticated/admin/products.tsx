@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,8 +10,15 @@ import {
   setProductActive,
   type ProductFilters,
 } from "@/lib/api/products";
-import { PRODUCT_CATEGORIES, LOW_STOCK_THRESHOLD, type Product } from "@/lib/api/types";
+import { uploadProductImage, deleteProductImage, getImageUrls } from "@/lib/api/storage";
+import {
+  PRODUCT_CATEGORIES,
+  LOW_STOCK_THRESHOLD,
+  type Product,
+  type ProductInsert,
+} from "@/lib/api/types";
 import { money, slugify, num } from "@/lib/format";
+import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -57,19 +64,62 @@ export const Route = createFileRoute("/_authenticated/admin/products")({
   component: ProductsPage,
 });
 
+interface SpecRow {
+  key: string;
+  value: string;
+}
+interface ColorRow {
+  name: string;
+  hex: string;
+}
+
 const EMPTY = {
   name: "",
   code: "",
   slug: "",
   category: "system" as Product["category"],
   price: 0,
+  cost_price: 0,
   stock: 0,
   subtitle: "",
   description: "",
   badge: "",
   weight_kg: 0,
   is_active: true,
+  images: [] as string[],
+  card_image: null as string | null,
+  specs: [] as SpecRow[],
+  colors: [] as ColorRow[],
+  sizes: [] as string[],
 };
+
+function specsToRows(specs: unknown): SpecRow[] {
+  if (!specs || typeof specs !== "object") return [];
+  return Object.entries(specs as Record<string, unknown>).map(([key, value]) => ({
+    key,
+    value: String(value),
+  }));
+}
+function rowsToSpecs(rows: SpecRow[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of rows) if (r.key.trim()) out[r.key.trim()] = r.value;
+  return out;
+}
+function colorsFromJson(colors: unknown): ColorRow[] {
+  if (!Array.isArray(colors)) return [];
+  return colors.map((c) =>
+    c && typeof c === "object"
+      ? {
+          name: String((c as Record<string, unknown>)["name"] ?? ""),
+          hex: String((c as Record<string, unknown>)["hex"] ?? "#000000"),
+        }
+      : { name: String(c), hex: "#000000" },
+  );
+}
+function sizesFromJson(sizes: unknown): string[] {
+  if (!Array.isArray(sizes)) return [];
+  return sizes.map((s) => String(s));
+}
 
 function ProductsPage() {
   const qc = useQueryClient();
@@ -83,6 +133,22 @@ function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY });
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (form.images.length === 0) {
+      setImageUrls({});
+      return;
+    }
+    let active = true;
+    getImageUrls(form.images).then((urls) => {
+      if (active) setImageUrls(urls);
+    });
+    return () => {
+      active = false;
+    };
+  }, [form.images]);
 
   const products = useQuery({
     queryKey: ["products", filters],
@@ -95,12 +161,17 @@ function ProductsPage() {
         ...form,
         slug: form.slug.trim() || slugify(form.name),
         price: num(form.price),
+        cost_price: num(form.cost_price),
         stock: Math.trunc(num(form.stock)),
         weight_kg: num(form.weight_kg),
         badge: form.badge.trim() || null,
+        specs: rowsToSpecs(form.specs),
+        colors: form.colors as unknown as ProductInsert["colors"],
+        sizes: form.sizes,
+        card_image: form.images[0] ?? null,
       };
-      if (editing) return updateProduct(editing.id, payload);
-      return createProduct(payload);
+      if (editing) return updateProduct(editing.id, payload as ProductInsert);
+      return createProduct(payload as ProductInsert);
     },
     onSuccess: () => {
       toast.success(editing ? "Product updated" : "Product created");
@@ -139,14 +210,53 @@ function ProductsPage() {
       slug: p.slug,
       category: p.category,
       price: num(p.price),
+      cost_price: num(p.cost_price),
       stock: p.stock,
       subtitle: p.subtitle ?? "",
       description: p.description ?? "",
       badge: p.badge ?? "",
       weight_kg: num(p.weight_kg),
       is_active: p.is_active,
+      images: Array.isArray(p.images) ? [...p.images] : [],
+      card_image: p.card_image ?? null,
+      specs: specsToRows(p.specs),
+      colors: colorsFromJson(p.colors),
+      sizes: sizesFromJson(p.sizes),
     });
     setOpen(true);
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    const slug = form.slug.trim() || slugify(form.name) || "untitled";
+    setUploading(true);
+    try {
+      const paths = await Promise.all(
+        files.map((file) => uploadProductImage(file, { productSlug: slug, kind: "gallery" })),
+      );
+      setForm((f) => ({ ...f, images: [...f.images, ...paths] }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Image upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeImage(path: string) {
+    setForm((f) => ({ ...f, images: f.images.filter((p) => p !== path) }));
+    deleteProductImage(path).catch(() => {});
+  }
+
+  function moveImage(index: number, dir: -1 | 1) {
+    setForm((f) => {
+      const images = [...f.images];
+      const target = index + dir;
+      if (target < 0 || target >= images.length) return f;
+      [images[index], images[target]] = [images[target]!, images[index]!];
+      return { ...f, images };
+    });
   }
 
   return (
@@ -316,9 +426,18 @@ function ProductsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4 sm:col-span-2">
               <div className="space-y-2">
-                <Label>Price (€)</Label>
+                <Label>Cost price (€)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.cost_price}
+                  onChange={(e) => setForm((f) => ({ ...f, cost_price: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Sell price (€)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -365,6 +484,202 @@ function ProductsPage() {
                 value={form.weight_kg}
                 onChange={(e) => setForm((f) => ({ ...f, weight_kg: Number(e.target.value) }))}
               />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Images (first is the storefront cover image)</Label>
+              <div className="flex flex-wrap gap-3">
+                {form.images.map((path, i) => (
+                  <div
+                    key={path}
+                    className="relative h-20 w-20 overflow-hidden rounded-md border border-border"
+                  >
+                    {imageUrls[path] ? (
+                      <img src={imageUrls[path]} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                        …
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="absolute top-0.5 right-0.5 rounded-full bg-background/90 p-0.5"
+                      onClick={() => removeImage(path)}
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <div className="absolute bottom-0.5 left-0.5 flex gap-0.5">
+                      <button
+                        type="button"
+                        className="rounded-full bg-background/90 p-0.5 disabled:opacity-30"
+                        disabled={i === 0}
+                        onClick={() => moveImage(i, -1)}
+                        aria-label="Move earlier"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full bg-background/90 p-0.5 disabled:opacity-30"
+                        disabled={i === form.images.length - 1}
+                        onClick={() => moveImage(i, 1)}
+                        aria-label="Move later"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground hover:border-foreground">
+                  {uploading ? "Uploading…" : "+ Add"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={handleImageSelect}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Specs</Label>
+              {form.specs.map((row, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    placeholder="Material"
+                    value={row.key}
+                    onChange={(e) =>
+                      setForm((f) => {
+                        const specs = [...f.specs];
+                        specs[i] = { ...specs[i]!, key: e.target.value };
+                        return { ...f, specs };
+                      })
+                    }
+                  />
+                  <Input
+                    placeholder="Premium materials"
+                    value={row.value}
+                    onChange={(e) =>
+                      setForm((f) => {
+                        const specs = [...f.specs];
+                        specs[i] = { ...specs[i]!, value: e.target.value };
+                        return { ...f, specs };
+                      })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setForm((f) => ({ ...f, specs: f.specs.filter((_, j) => j !== i) }))
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setForm((f) => ({ ...f, specs: [...f.specs, { key: "", value: "" }] }))
+                }
+              >
+                Add spec
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Colors</Label>
+              {form.colors.map((row, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    placeholder="Name"
+                    value={row.name}
+                    onChange={(e) =>
+                      setForm((f) => {
+                        const colors = [...f.colors];
+                        colors[i] = { ...colors[i]!, name: e.target.value };
+                        return { ...f, colors };
+                      })
+                    }
+                  />
+                  <Input
+                    type="color"
+                    className="w-14 p-1"
+                    value={row.hex}
+                    onChange={(e) =>
+                      setForm((f) => {
+                        const colors = [...f.colors];
+                        colors[i] = { ...colors[i]!, hex: e.target.value };
+                        return { ...f, colors };
+                      })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setForm((f) => ({ ...f, colors: f.colors.filter((_, j) => j !== i) }))
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setForm((f) => ({ ...f, colors: [...f.colors, { name: "", hex: "#000000" }] }))
+                }
+              >
+                Add color
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Sizes</Label>
+              {form.sizes.map((size, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    value={size}
+                    onChange={(e) =>
+                      setForm((f) => {
+                        const sizes = [...f.sizes];
+                        sizes[i] = e.target.value;
+                        return { ...f, sizes };
+                      })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setForm((f) => ({ ...f, sizes: f.sizes.filter((_, j) => j !== i) }))
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm((f) => ({ ...f, sizes: [...f.sizes, ""] }))}
+              >
+                Add size
+              </Button>
             </div>
           </div>
           <DialogFooter>

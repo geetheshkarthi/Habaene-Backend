@@ -109,7 +109,12 @@ export async function createWarehouse(payload: Partial<Warehouse>): Promise<Ware
 }
 
 export async function updateWarehouse(id: string, payload: Partial<Warehouse>): Promise<Warehouse> {
-  const { data, error } = await supabase.from("warehouses").update(payload).eq("id", id).select().single();
+  const { data, error } = await supabase
+    .from("warehouses")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw new Error(error.message);
   return data as Warehouse;
 }
@@ -123,7 +128,7 @@ export async function deleteWarehouse(id: string): Promise<void> {
 
 export async function getInventoryMovements(
   productId?: string,
-  limit = 50
+  limit = 50,
 ): Promise<InventoryMovement[]> {
   let q = supabase
     .from("inventory_movements")
@@ -155,7 +160,7 @@ export async function logInventoryMovement(payload: {
 export async function adjustProductStock(
   productId: string,
   newQuantity: number,
-  reason: string
+  reason: string,
 ): Promise<void> {
   const { data: prod, error: prodErr } = await supabase
     .from("products")
@@ -199,7 +204,12 @@ export async function createSupplier(payload: Partial<Supplier>): Promise<Suppli
 }
 
 export async function updateSupplier(id: string, payload: Partial<Supplier>): Promise<Supplier> {
-  const { data, error } = await supabase.from("suppliers").update(payload).eq("id", id).select().single();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw new Error(error.message);
   return data as Supplier;
 }
@@ -213,17 +223,16 @@ function generatePoNumber(): string {
 }
 
 export async function getPurchaseOrders(status?: string): Promise<PurchaseOrder[]> {
-  let q = supabase
-    .from("purchase_orders")
-    .select("*")
-    .order("created_at", { ascending: false });
+  let q = supabase.from("purchase_orders").select("*").order("created_at", { ascending: false });
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []) as PurchaseOrder[];
 }
 
-export async function getPurchaseOrder(id: string): Promise<{ po: PurchaseOrder; items: PurchaseOrderItem[] }> {
+export async function getPurchaseOrder(
+  id: string,
+): Promise<{ po: PurchaseOrder; items: PurchaseOrderItem[] }> {
   const [poRes, itemsRes] = await Promise.all([
     supabase.from("purchase_orders").select("*").eq("id", id).single(),
     supabase.from("purchase_order_items").select("*").eq("po_id", id),
@@ -235,7 +244,7 @@ export async function getPurchaseOrder(id: string): Promise<{ po: PurchaseOrder;
 
 export async function createPurchaseOrder(
   payload: Partial<PurchaseOrder>,
-  items: Partial<PurchaseOrderItem>[]
+  items: Partial<PurchaseOrderItem>[],
 ): Promise<PurchaseOrder> {
   const po_number = generatePoNumber();
   const { data: po, error: poErr } = await supabase
@@ -255,7 +264,7 @@ export async function createPurchaseOrder(
 
 export async function receivePurchaseOrder(
   poId: string,
-  receivedItems: { item_id: string; received_quantity: number; damaged_quantity: number }[]
+  receivedItems: { item_id: string; received_quantity: number; damaged_quantity: number }[],
 ): Promise<void> {
   for (const ri of receivedItems) {
     const { data: item } = await supabase
@@ -273,16 +282,52 @@ export async function receivePurchaseOrder(
       })
       .eq("id", ri.item_id);
 
-    if (item.product_id && ri.received_quantity > 0) {
+    if (!item.product_id) continue;
+
+    // Logged as "purchase" (received, sellable) and "damage" (received, not
+    // sellable) separately, rather than through adjustProductStock — that
+    // only ever writes movement_type "adjustment", which made the
+    // inventory_overview view's damaged/returned aggregate always read zero
+    // regardless of what actually came in on a purchase order.
+    if (ri.received_quantity > 0) {
       const { data: prod } = await supabase
         .from("products")
         .select("stock")
         .eq("id", item.product_id)
         .single();
       if (prod) {
-        const after = prod.stock + ri.received_quantity;
-        await adjustProductStock(item.product_id, after, `Purchase order ${poId}`);
+        const before = prod.stock;
+        const after = before + ri.received_quantity;
+        await supabase.from("products").update({ stock: after }).eq("id", item.product_id);
+        await logInventoryMovement({
+          product_id: item.product_id,
+          movement_type: "purchase",
+          quantity_before: before,
+          quantity_change: ri.received_quantity,
+          quantity_after: after,
+          reason: `Purchase order ${poId}`,
+          reference_id: poId,
+          reference_type: "purchase_order",
+        });
       }
+    }
+    if (ri.damaged_quantity > 0) {
+      const { data: prod } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", item.product_id)
+        .single();
+      const stockNow = prod?.stock ?? 0;
+      await logInventoryMovement({
+        product_id: item.product_id,
+        movement_type: "damage",
+        quantity_before: stockNow,
+        quantity_change: -ri.damaged_quantity,
+        quantity_after: stockNow,
+        reason: `Damaged on receipt — purchase order ${poId}`,
+        reference_id: poId,
+        reference_type: "purchase_order",
+      });
     }
   }
   await supabase
@@ -294,10 +339,7 @@ export async function receivePurchaseOrder(
 // ─── Product Drops ───────────────────────────────────────────────────────────
 
 export async function getProductDrops(status?: string): Promise<ProductDrop[]> {
-  let q = supabase
-    .from("product_drops")
-    .select("*")
-    .order("launch_at", { ascending: false });
+  let q = supabase.from("product_drops").select("*").order("launch_at", { ascending: false });
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -310,10 +352,59 @@ export async function createProductDrop(payload: Partial<ProductDrop>): Promise<
   return data as ProductDrop;
 }
 
-export async function updateProductDrop(id: string, payload: Partial<ProductDrop>): Promise<ProductDrop> {
-  const { data, error } = await supabase.from("product_drops").update(payload).eq("id", id).select().single();
+export async function updateProductDrop(
+  id: string,
+  payload: Partial<ProductDrop>,
+): Promise<ProductDrop> {
+  const { data, error } = await supabase
+    .from("product_drops")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw new Error(error.message);
   return data as ProductDrop;
+}
+
+// ─── Inventory overview (admin Inventory page) ──────────────────────────────
+
+export interface InventoryOverviewRow {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  badge: string | null;
+  weight_kg: number;
+  stock: number;
+  price: number;
+  cost_price: number;
+  is_active: boolean;
+  card_image: string | null;
+  damaged_returned: number;
+  incoming: number;
+  inventory_value: number;
+}
+
+export interface InventoryOverviewFilters {
+  search?: string;
+  category?: string;
+  stockFilter?: "all" | "low" | "out";
+}
+
+export async function getInventoryOverview(
+  filters: InventoryOverviewFilters = {},
+): Promise<InventoryOverviewRow[]> {
+  let q = supabase.from("inventory_overview").select("*").order("name");
+  if (filters.search?.trim()) {
+    const term = `%${filters.search.trim()}%`;
+    q = q.or(`name.ilike.${term},code.ilike.${term}`);
+  }
+  if (filters.category && filters.category !== "all") q = q.eq("category", filters.category);
+  if (filters.stockFilter === "out") q = q.eq("stock", 0);
+  if (filters.stockFilter === "low") q = q.gt("stock", 0).lt("stock", 10);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InventoryOverviewRow[];
 }
 
 // ─── Stock alerts ────────────────────────────────────────────────────────────
@@ -357,11 +448,13 @@ export async function getBackInStockRequests(productId?: string) {
 export async function registerBackInStockRequest(
   email: string,
   productId: string,
-  variantId?: string
+  variantId?: string,
 ): Promise<void> {
-  const { error } = await supabase.from("back_in_stock_requests").upsert(
-    { email, product_id: productId, variant_id: variantId ?? null, is_active: true },
-    { onConflict: "email,product_id" }
-  );
+  const { error } = await supabase
+    .from("back_in_stock_requests")
+    .upsert(
+      { email, product_id: productId, variant_id: variantId ?? null, is_active: true },
+      { onConflict: "email,product_id" },
+    );
   if (error) throw new Error(error.message);
 }
