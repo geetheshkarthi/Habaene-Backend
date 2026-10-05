@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { getProducts, updateProduct, deleteProduct, type ProductFilters } from "@/lib/api/products";
 import { PRODUCT_CATEGORIES, type Product } from "@/lib/api/types";
 import { money, num } from "@/lib/format";
+import { imageUrl } from "@/lib/config";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -238,7 +239,7 @@ function ProductsPage() {
                       <div className="flex items-center gap-3">
                         {p.card_image && (
                           <img
-                            src={p.card_image}
+                            src={imageUrl(p.card_image) ?? undefined}
                             alt=""
                             className="h-10 w-10 rounded-md object-cover"
                           />

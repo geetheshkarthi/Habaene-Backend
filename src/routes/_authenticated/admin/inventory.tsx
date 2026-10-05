@@ -21,6 +21,7 @@ import {
 import { uploadProductImage, deleteProductImage, getImageUrls } from "@/lib/api/storage";
 import { PRODUCT_CATEGORIES, type Product, type ProductInsert } from "@/lib/api/types";
 import { money, slugify, num, toCsv, downloadFile } from "@/lib/format";
+import { imageUrl } from "@/lib/config";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -538,7 +539,7 @@ function InventoryPage() {
                           <div className="flex items-center gap-3">
                             {r.card_image && (
                               <img
-                                src={r.card_image}
+                                src={imageUrl(r.card_image) ?? undefined}
                                 alt=""
                                 className="h-10 w-10 rounded-md object-cover"
                               />
