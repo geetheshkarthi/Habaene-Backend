@@ -2,13 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  getProducts,
-  updateProduct,
-  deleteProduct,
-  setProductActive,
-  type ProductFilters,
-} from "@/lib/api/products";
+import { getProducts, updateProduct, deleteProduct, type ProductFilters } from "@/lib/api/products";
 import { PRODUCT_CATEGORIES, type Product } from "@/lib/api/types";
 import { money, num } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -24,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -71,9 +66,16 @@ function ProductsPage() {
   const [price, setPrice] = useState(0);
   const [position, setPosition] = useState(0);
 
+  // Products only ever shows items Inventory has pushed (is_active = true).
   const products = useQuery({
     queryKey: ["products", filters],
-    queryFn: () => getProducts(filters),
+    queryFn: () => getProducts({ ...filters, activeOnly: true }),
+  });
+
+  // Unfiltered pass for stable summary cards, same pattern as Inventory.
+  const allPushed = useQuery({
+    queryKey: ["products", "all-pushed"],
+    queryFn: () => getProducts({ activeOnly: true }),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["products"] });
@@ -89,8 +91,14 @@ function ProductsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const toggle = useMutation({
-    mutationFn: ({ id, active }: { id: string; active: boolean }) => setProductActive(id, active),
+  // This is the website-visibility toggle — distinct from Inventory's "Push
+  // to Products" (is_active). Conflating the two in one column previously
+  // meant toggling Hide/Show here could un-push the item from Inventory's
+  // perspective too, which looked like "click one button, a different one
+  // reacts".
+  const publish = useMutation({
+    mutationFn: ({ id, published }: { id: string; published: boolean }) =>
+      updateProduct(id, { is_published: published }),
     onSuccess: invalidate,
     onError: (e: Error) => toast.error(e.message),
   });
@@ -98,7 +106,7 @@ function ProductsPage() {
   const remove = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
-      toast.success("Product archived");
+      toast.success("Product removed");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -110,13 +118,52 @@ function ProductsPage() {
     setPosition(p.position ?? 0);
   }
 
+  const items = allPushed.data ?? [];
+  const totalValuation = items.reduce((s, p) => s + num(p.price) * p.stock, 0);
+  const totalProducts = items.length;
+  const totalLive = items.filter((p) => p.is_published).length;
+
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Catalogue"
         title="Products"
-        description="What's live on the storefront — price, display priority and visibility. Create new items in Inventory, then push them here."
+        description="What's pushed from Inventory — set a price and priority, then choose what goes live on the storefront."
       />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">
+              Total Product Valuation
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{money(totalValuation)}</p>
+            <p className="text-xs text-muted-foreground">Retail value (stock × sell price)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">
+              Total Products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{totalProducts}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">
+              Total Products Live
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold text-success">{totalLive}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <Input
@@ -166,7 +213,7 @@ function ProductsPage() {
       ) : products.data!.length === 0 ? (
         <EmptyState
           title="No products"
-          description="Create items in Inventory first, then push them live here."
+          description="Push items from Inventory first — they'll show up here."
         />
       ) : (
         <div className="rounded-lg border border-border">
@@ -182,53 +229,63 @@ function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.data!.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {p.card_image && (
-                        <img
-                          src={p.card_image}
-                          alt=""
-                          className="h-10 w-10 rounded-md object-cover"
-                        />
-                      )}
-                      <div>
-                        <p>{p.name}</p>
-                        <p className="text-xs text-muted-foreground">{p.code || p.slug}</p>
+              {products.data!.map((p) => {
+                const publishPending = publish.isPending && publish.variables?.id === p.id;
+                const removePending = remove.isPending && remove.variables === p.id;
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {p.card_image && (
+                          <img
+                            src={p.card_image}
+                            alt=""
+                            className="h-10 w-10 rounded-md object-cover"
+                          />
+                        )}
+                        <div>
+                          <p>{p.name}</p>
+                          <p className="text-xs text-muted-foreground">{p.code || p.slug}</p>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{p.category}</TableCell>
-                  <TableCell className="text-right">{money(p.price)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {p.position ?? 0}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge value={p.is_active ? "active" : "inactive"} />
-                  </TableCell>
-                  <TableCell className="space-x-1 text-right whitespace-nowrap">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
-                      Price &amp; priority
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => toggle.mutate({ id: p.id, active: !p.is_active })}
-                    >
-                      {p.is_active ? "Hide" : "Show"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => remove.mutate(p.id)}
-                    >
-                      Archive
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="capitalize">{p.category}</TableCell>
+                    <TableCell className="text-right">{money(p.price)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {p.position ?? 0}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge value={p.is_published ? "active" : "inactive"} />
+                    </TableCell>
+                    <TableCell className="space-x-1 text-right whitespace-nowrap">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
+                        Price &amp; priority
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={publishPending}
+                        onClick={() => publish.mutate({ id: p.id, published: !p.is_published })}
+                      >
+                        {publishPending
+                          ? "Saving…"
+                          : p.is_published
+                            ? "Hide from Website"
+                            : "Show on Website"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        disabled={removePending}
+                        onClick={() => remove.mutate(p.id)}
+                      >
+                        {removePending ? "Removing…" : "Remove"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

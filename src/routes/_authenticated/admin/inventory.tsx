@@ -400,7 +400,7 @@ function InventoryPage() {
       <PageHeader
         eyebrow="E-Commerce"
         title="Inventory Management"
-        description="Create and maintain every item here — cost, stock, images and full storefront content. Push to Products when it's ready to go live and set a price."
+        description="Create and maintain every item here — cost, stock, images and full storefront content. Push an item to Products when it's ready for pricing; going live on the website is set there."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportCsv}>
@@ -575,17 +575,21 @@ function InventoryPage() {
                           <Button
                             size="sm"
                             variant="outline"
+                            disabled={togglePush.isPending && togglePush.variables?.id === r.id}
                             onClick={() => togglePush.mutate({ id: r.id, active: !r.is_active })}
                           >
-                            {r.is_active ? "Live on Website" : "Push to Products"}
+                            {r.is_active ? "In Products" : "Push to Products"}
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             className="text-destructive"
+                            disabled={archive.isPending && archive.variables === r.id}
                             onClick={() => archive.mutate(r.id)}
                           >
-                            Delete
+                            {archive.isPending && archive.variables === r.id
+                              ? "Deleting…"
+                              : "Delete"}
                           </Button>
                         </TableCell>
                       </TableRow>

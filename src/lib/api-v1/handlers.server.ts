@@ -85,7 +85,7 @@ export async function listProducts(url: URL): Promise<ProductListResult> {
   let query = supabaseAdmin
     .from("products")
     .select(PRODUCT_COLUMNS, { count: "exact" })
-    .eq("is_active", true)
+    .eq("is_published", true)
     .is("deleted_at", null)
     .order("position", { ascending: true })
     .order("created_at", { ascending: false })
@@ -119,7 +119,7 @@ export async function getProductBySlug(slug: string): Promise<PublicProduct> {
     .from("products")
     .select(PRODUCT_COLUMNS)
     .eq("slug", slug)
-    .eq("is_active", true)
+    .eq("is_published", true)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new Error(error.message);

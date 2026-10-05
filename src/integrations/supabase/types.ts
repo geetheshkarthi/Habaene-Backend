@@ -416,6 +416,7 @@ export type Database = {
           id: string;
           images: string[];
           is_active: boolean;
+          is_published: boolean;
           materials: string;
           mood: Json;
           name: string;
@@ -451,6 +452,7 @@ export type Database = {
           id?: string;
           images?: string[];
           is_active?: boolean;
+          is_published?: boolean;
           materials?: string;
           mood?: Json;
           name: string;
@@ -486,6 +488,7 @@ export type Database = {
           id?: string;
           images?: string[];
           is_active?: boolean;
+          is_published?: boolean;
           materials?: string;
           mood?: Json;
           name?: string;
