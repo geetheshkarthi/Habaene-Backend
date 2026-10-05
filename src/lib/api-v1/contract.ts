@@ -54,6 +54,16 @@ export interface PublicProduct {
   colors: unknown;
   sizes: unknown;
   weight_kg: number;
+  mood: unknown;
+  pack_items: unknown;
+  passport_service: string;
+  passport_role: string;
+  materials: string;
+  care_instructions: string;
+  product_story: string;
+  warranty_info: string;
+  blueprint: unknown;
+  position: number;
 }
 
 export interface ProductListResult {
@@ -262,4 +272,3 @@ export type SystemCheckResult = Record<SystemCheckComponent, HealthState> & {
   timestamp: string;
   details: Record<SystemCheckComponent, SystemCheckDetail>;
 };
-

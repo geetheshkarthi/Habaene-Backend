@@ -11,7 +11,11 @@ export interface ProductFilters {
 
 /** Admin-facing product list (RLS grants full read to admins). */
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
-  let query = supabase.from("products").select("*").order("created_at", { ascending: false });
+  let query = supabase
+    .from("products")
+    .select("*")
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: false });
 
   if (!filters.includeDeleted) query = query.is("deleted_at", null);
   if (filters.activeOnly) query = query.eq("is_active", true);
@@ -34,7 +38,11 @@ export async function getProduct(id: string): Promise<Product> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const { data, error } = await supabase.from("products").select("*").eq("slug", slug).maybeSingle();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -74,9 +82,7 @@ export async function setProductImages(
   images: string[],
   cardImage: string | null,
 ): Promise<void> {
-  assertOk(
-    await supabase.from("products").update({ images, card_image: cardImage }).eq("id", id),
-  );
+  assertOk(await supabase.from("products").update({ images, card_image: cardImage }).eq("id", id));
 }
 
 export async function bulkSetActive(ids: string[], isActive: boolean): Promise<void> {

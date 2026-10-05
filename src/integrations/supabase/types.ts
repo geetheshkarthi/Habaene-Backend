@@ -403,7 +403,9 @@ export type Database = {
       products: {
         Row: {
           badge: string | null;
+          blueprint: Json;
           card_image: string | null;
+          care_instructions: string;
           category: Database["public"]["Enums"]["product_category"];
           code: string;
           colors: Json;
@@ -414,9 +416,16 @@ export type Database = {
           id: string;
           images: string[];
           is_active: boolean;
+          materials: string;
+          mood: Json;
           name: string;
+          pack_items: Json;
           passport_code: string | null;
+          passport_role: string;
+          passport_service: string;
+          position: number;
           price: number;
+          product_story: string;
           sizes: Json;
           slug: string;
           specs: Json;
@@ -424,11 +433,14 @@ export type Database = {
           subtitle: string;
           updated_at: string;
           vat_rate: number;
+          warranty_info: string;
           weight_kg: number;
         };
         Insert: {
           badge?: string | null;
+          blueprint?: Json;
           card_image?: string | null;
+          care_instructions?: string;
           category?: Database["public"]["Enums"]["product_category"];
           code: string;
           colors?: Json;
@@ -439,9 +451,16 @@ export type Database = {
           id?: string;
           images?: string[];
           is_active?: boolean;
+          materials?: string;
+          mood?: Json;
           name: string;
+          pack_items?: Json;
           passport_code?: string | null;
+          passport_role?: string;
+          passport_service?: string;
+          position?: number;
           price: number;
+          product_story?: string;
           sizes?: Json;
           slug: string;
           specs?: Json;
@@ -449,11 +468,14 @@ export type Database = {
           subtitle?: string;
           updated_at?: string;
           vat_rate?: number;
+          warranty_info?: string;
           weight_kg?: number;
         };
         Update: {
           badge?: string | null;
+          blueprint?: Json;
           card_image?: string | null;
+          care_instructions?: string;
           category?: Database["public"]["Enums"]["product_category"];
           code?: string;
           colors?: Json;
@@ -464,9 +486,16 @@ export type Database = {
           id?: string;
           images?: string[];
           is_active?: boolean;
+          materials?: string;
+          mood?: Json;
           name?: string;
+          pack_items?: Json;
           passport_code?: string | null;
+          passport_role?: string;
+          passport_service?: string;
+          position?: number;
           price?: number;
+          product_story?: string;
           sizes?: Json;
           slug?: string;
           specs?: Json;
@@ -474,6 +503,7 @@ export type Database = {
           subtitle?: string;
           updated_at?: string;
           vat_rate?: number;
+          warranty_info?: string;
           weight_kg?: number;
         };
         Relationships: [];

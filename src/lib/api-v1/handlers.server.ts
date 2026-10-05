@@ -41,7 +41,7 @@ import { SYSTEM_CHECK_COMPONENTS } from "./contract";
 export const APP_VERSION = "1.0.0";
 
 const PRODUCT_COLUMNS =
-  "id, code, name, slug, subtitle, description, badge, category, price, vat_rate, stock, images, card_image, passport_code, specs, colors, sizes, weight_kg";
+  "id, code, name, slug, subtitle, description, badge, category, price, vat_rate, stock, images, card_image, passport_code, specs, colors, sizes, weight_kg, mood, pack_items, passport_service, passport_role, materials, care_instructions, product_story, warranty_info, blueprint, position";
 
 type ProductRow = {
   price: number | string;
@@ -87,6 +87,7 @@ export async function listProducts(url: URL): Promise<ProductListResult> {
     .select(PRODUCT_COLUMNS, { count: "exact" })
     .eq("is_active", true)
     .is("deleted_at", null)
+    .order("position", { ascending: true })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -1159,17 +1160,15 @@ const earlyAccessSchema = z.object({
 
 export async function joinEarlyAccess(body: unknown) {
   const { email, drop_id, product_id, source } = parse(earlyAccessSchema, body);
-  const { error } = await db
-    .from("early_access_list")
-    .upsert(
-      {
-        email,
-        drop_id: drop_id ?? null,
-        product_id: product_id ?? null,
-        source: source ?? "website",
-      },
-      { onConflict: "email,drop_id" },
-    );
+  const { error } = await db.from("early_access_list").upsert(
+    {
+      email,
+      drop_id: drop_id ?? null,
+      product_id: product_id ?? null,
+      source: source ?? "website",
+    },
+    { onConflict: "email,drop_id" },
+  );
   if (error) throw new Error(error.message);
   return { registered: true };
 }
