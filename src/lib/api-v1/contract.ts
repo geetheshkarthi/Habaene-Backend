@@ -139,6 +139,7 @@ export interface CheckoutSessionResult extends OrderTotals {
 }
 
 export interface PublicOrderItem {
+  product_id: string | null;
   product_name: string;
   product_code: string;
   quantity: number;
@@ -150,6 +151,7 @@ export interface PublicOrderItem {
 }
 
 export interface PublicOrder extends OrderTotals {
+  id: string;
   order_number: string;
   status: string;
   payment_status: string;

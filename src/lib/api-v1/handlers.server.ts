@@ -193,6 +193,7 @@ export async function getOrder(orderNumber: string, url: URL): Promise<PublicOrd
     : null;
 
   return {
+    id: data.id,
     order_number: data.order_number,
     status: data.status,
     payment_status: data.payment_status,
@@ -211,6 +212,7 @@ export async function getOrder(orderNumber: string, url: URL): Promise<PublicOrd
     currency: data.currency,
     withdrawal_deadline,
     items: data.order_items.map((i) => ({
+      product_id: i.product_id,
       product_name: i.product_name,
       product_code: i.product_code,
       quantity: i.quantity,
