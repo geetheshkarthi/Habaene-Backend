@@ -26,24 +26,12 @@ type FormState = {
   hero_slides: HeroSlide[];
   homepage_reviews_count: number;
   featured_product_ids: string[];
-  promotional_sections: string;
-  editorial_sections: string;
-  faq_section: string;
-  newsletter_heading: string;
-  newsletter_body: string;
-  newsletter_cta: string;
 };
 
 const EMPTY: FormState = {
   hero_slides: [],
   homepage_reviews_count: 8,
   featured_product_ids: [],
-  promotional_sections: "[]",
-  editorial_sections: "[]",
-  faq_section: "[]",
-  newsletter_heading: "",
-  newsletter_body: "",
-  newsletter_cta: "",
 };
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -58,25 +46,6 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-/** Parse a JSON textarea, falling back when the author left it invalid. */
-function parseJson(value: string, fallback: unknown[]): unknown[] {
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function isValidJsonArray(value: string): boolean {
-  if (value.trim() === "") return true;
-  try {
-    return Array.isArray(JSON.parse(value));
-  } catch {
-    return false;
-  }
-}
-
 function HomepageEditor() {
   const qc = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -89,17 +58,10 @@ function HomepageEditor() {
 
   useEffect(() => {
     if (!data) return;
-    const news = (data.newsletter_section ?? {}) as Record<string, unknown>;
     setForm({
       hero_slides: data.hero_slides ?? [],
       homepage_reviews_count: data.homepage_reviews_count ?? 8,
       featured_product_ids: data.featured_product_ids ?? [],
-      promotional_sections: JSON.stringify(data.promotional_sections ?? [], null, 2),
-      editorial_sections: JSON.stringify(data.editorial_sections ?? [], null, 2),
-      faq_section: JSON.stringify(data.faq_section ?? [], null, 2),
-      newsletter_heading: String(news["heading"] ?? ""),
-      newsletter_body: String(news["body"] ?? ""),
-      newsletter_cta: String(news["cta"] ?? ""),
     });
   }, [data]);
 
@@ -109,14 +71,6 @@ function HomepageEditor() {
         hero_slides: form.hero_slides,
         homepage_reviews_count: Math.max(1, Math.trunc(form.homepage_reviews_count) || 8),
         featured_product_ids: form.featured_product_ids,
-        promotional_sections: parseJson(form.promotional_sections, []),
-        editorial_sections: parseJson(form.editorial_sections, []),
-        faq_section: parseJson(form.faq_section, []),
-        newsletter_section: {
-          heading: form.newsletter_heading,
-          body: form.newsletter_body,
-          cta: form.newsletter_cta,
-        },
       };
       return updateHomepage(payload);
     },
@@ -131,10 +85,6 @@ function HomepageEditor() {
   if (error) return <ErrorState error={error} />;
 
   const productList = products.data ?? [];
-  const jsonFieldsValid =
-    isValidJsonArray(form.promotional_sections) &&
-    isValidJsonArray(form.editorial_sections) &&
-    isValidJsonArray(form.faq_section);
 
   function toggleFeatured(id: string) {
     setForm((f) => ({
@@ -181,9 +131,9 @@ function HomepageEditor() {
       <PageHeader
         eyebrow="Content"
         title="Homepage"
-        description="Everything the storefront homepage renders, without touching code."
+        description="Only what the storefront homepage actually renders: the hero carousel, the reviews strip and the featured-products grid."
         actions={
-          <Button onClick={() => save.mutate()} disabled={save.isPending || !jsonFieldsValid}>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>
             Save changes
           </Button>
         }
@@ -296,61 +246,6 @@ function HomepageEditor() {
           </div>
         )}
         <p className="text-xs text-muted-foreground">{form.featured_product_ids.length} selected</p>
-      </Section>
-
-      <Section title="Newsletter Section">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Heading</Label>
-            <Input
-              value={form.newsletter_heading}
-              onChange={(e) => setForm((f) => ({ ...f, newsletter_heading: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Body</Label>
-            <Textarea
-              rows={2}
-              value={form.newsletter_body}
-              onChange={(e) => setForm((f) => ({ ...f, newsletter_body: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Button text</Label>
-            <Input
-              value={form.newsletter_cta}
-              onChange={(e) => setForm((f) => ({ ...f, newsletter_cta: e.target.value }))}
-            />
-          </div>
-        </div>
-      </Section>
-
-      <Section
-        title="Promotional, Editorial and FAQ Blocks"
-        hint="Free-form section lists. Edit as JSON arrays until a visual block builder is added."
-      >
-        <div className="space-y-4">
-          {(
-            [
-              ["Promotional sections", "promotional_sections"],
-              ["Editorial sections", "editorial_sections"],
-              ["FAQ section", "faq_section"],
-            ] as const
-          ).map(([label, key]) => (
-            <div key={key} className="space-y-2">
-              <Label>{label}</Label>
-              <Textarea
-                rows={6}
-                className="font-mono text-xs"
-                value={form[key]}
-                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-              />
-              {!isValidJsonArray(form[key]) && (
-                <p className="text-xs text-destructive">Must be a valid JSON array.</p>
-              )}
-            </div>
-          ))}
-        </div>
       </Section>
     </div>
   );
