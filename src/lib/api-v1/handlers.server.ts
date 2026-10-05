@@ -1055,6 +1055,7 @@ export async function getReviews(url: URL) {
     .from("reviews")
     .select(
       "id, product_id, customer_name, rating, title, body, is_verified_purchase, helpful_count, photos, created_at",
+      { count: "exact" },
     )
     .in("status", ["approved", "featured"])
     .order("helpful_count", { ascending: false })
@@ -1063,6 +1064,46 @@ export async function getReviews(url: URL) {
   const { data, error, count } = await q;
   if (error) throw new Error(error.message);
   return { reviews: data ?? [], total: count ?? 0 };
+}
+
+/**
+ * Powers the storefront's rating summary blocks (homepage stats, PDP header).
+ * Without `product_id` it's site-wide and also reports a "happy customers"
+ * count (distinct customers with a paid order) for the homepage trust strip.
+ */
+export async function getReviewStats(url: URL) {
+  const productId = url.searchParams.get("product_id");
+  let q = db.from("reviews").select("rating, photos").in("status", ["approved", "featured"]);
+  if (productId) q = q.eq("product_id", productId);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as { rating: number; photos: string[] | null }[];
+  const count = rows.length;
+  const average = count ? rows.reduce((s, r) => s + r.rating, 0) / count : 0;
+  const photosCount = rows.reduce((s, r) => s + (r.photos?.length ?? 0), 0);
+  const distribution = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: rows.filter((r) => r.rating === star).length,
+  }));
+
+  const result: Record<string, unknown> = {
+    average: Math.round(average * 10) / 10,
+    count,
+    photos_count: photosCount,
+    distribution,
+  };
+
+  if (!productId) {
+    const { data: paidOrders } = await supabaseAdmin
+      .from("orders")
+      .select("customer_email")
+      .eq("payment_status", "paid")
+      .is("deleted_at", null);
+    result["happy_customers_count"] = new Set((paidOrders ?? []).map((o) => o.customer_email)).size;
+  }
+
+  return result;
 }
 
 const reviewSchema = z.object({

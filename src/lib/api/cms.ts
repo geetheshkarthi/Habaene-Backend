@@ -118,6 +118,7 @@ export interface FaqItem {
 export interface Review {
   id: string;
   product_id: string;
+  products?: { name: string; code: string } | null;
   customer_id: string | null;
   order_id: string | null;
   customer_name: string;
@@ -371,7 +372,7 @@ export async function reorderFaqItems(orderedIds: string[]): Promise<void> {
 export async function getReviews(status?: string, productId?: string): Promise<Review[]> {
   let q = supabase
     .from("reviews")
-    .select("*")
+    .select("*, products(name, code)")
     .order("created_at", { ascending: false });
   if (status) q = q.eq("status", status);
   if (productId) q = q.eq("product_id", productId);
