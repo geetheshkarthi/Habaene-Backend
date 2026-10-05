@@ -100,6 +100,12 @@ export interface OrderInputBody {
   discount_code?: string;
   newsletter_opt_in?: boolean;
   gdpr_consent_text?: string;
+  /** Captured from the URL on first visit and replayed at checkout so the
+   * Campaigns admin page can attribute orders to a UTM-tagged campaign. */
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
 }
 
 export interface CheckoutInputBody extends OrderInputBody {

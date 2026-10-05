@@ -76,6 +76,11 @@ export async function dispatch(request: Request, path: string): Promise<Response
         if (method !== "POST") return methodNotAllowed(method);
         return ok(await h.submitContact(await body(request)), 201);
 
+      case "promotions": {
+        if (method !== "GET") return methodNotAllowed(method);
+        return ok(await h.getActivePromotions());
+      }
+
       case "discounts":
         if (method === "POST" && second === "validate") {
           return ok(await h.validateDiscount(await body(request)));

@@ -524,6 +524,23 @@ export async function validateDiscount(payload: unknown): Promise<DiscountValida
   };
 }
 
+/* -------------------------------- promotions ------------------------------- */
+
+/** Currently-active promotions, for a storefront banner — the same ones
+ * priceCart() will actually apply at checkout, so the message always
+ * matches what the customer's total reflects. */
+export async function getActivePromotions() {
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("promotions")
+    .select("id, name, description, type, value, min_order, applies_to")
+    .eq("status", "active")
+    .or(`start_at.is.null,start_at.lte.${now}`)
+    .or(`end_at.is.null,end_at.gte.${now}`);
+  if (error) throw new Error(error.message);
+  return { promotions: data ?? [] };
+}
+
 /* ------------------------------ store settings ----------------------------- */
 
 export async function getPublicStore(): Promise<PublicStoreSettings> {

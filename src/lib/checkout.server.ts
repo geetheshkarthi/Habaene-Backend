@@ -56,6 +56,10 @@ export const orderInputSchema = z.object({
   discount_code: z.string().trim().max(40).optional(),
   newsletter_opt_in: z.boolean().optional(),
   gdpr_consent_text: z.string().trim().max(500).optional(),
+  utm_source: z.string().trim().max(100).optional(),
+  utm_medium: z.string().trim().max(100).optional(),
+  utm_campaign: z.string().trim().max(100).optional(),
+  utm_content: z.string().trim().max(100).optional(),
 });
 
 export const checkoutSchema = orderInputSchema.extend({
@@ -151,10 +155,55 @@ export async function priceCart(input: OrderInput) {
     }
   }
 
+  // Auto-apply the best eligible active Promotion (admin-run site-wide/
+  // category offers, distinct from a customer-entered discount code).
+  // A promotion and a manual code don't stack — whichever discounts more
+  // wins — but free shipping is a separate benefit and always applies when
+  // eligible. "buy_x_get_y" promotions are excluded from auto-apply (needs
+  // per-line-item matching this pricing pass doesn't attempt) but still
+  // show up via the public active-promotions endpoint for display.
+  const now = new Date();
+  const { data: activePromotions } = await supabaseAdmin
+    .from("promotions")
+    .select("*")
+    .eq("status", "active");
+  const productIds = new Set(lines.map((l) => l.product_id));
+  // category_ids is typed uuid[], but products.category is a plain enum
+  // (no separate categories table exists in this schema) — there is no
+  // meaningful way to match the two, so category-scoped promotions are not
+  // auto-applied. Only "all" and explicit "products" scoping are supported.
+  const eligible = (activePromotions ?? []).filter((p) => {
+    if (p.start_at && new Date(p.start_at) > now) return false;
+    if (p.end_at && new Date(p.end_at) < now) return false;
+    if (p.min_order != null && subtotal < Number(p.min_order)) return false;
+    if (p.applies_to === "all") return true;
+    if (p.applies_to === "products") return (p.product_ids ?? []).some((id) => productIds.has(id));
+    return false;
+  });
+
+  let promotion_id: string | null = null;
+  const monetary = eligible.filter((p) => p.type === "percent" || p.type === "fixed");
+  const bestMonetary = monetary.reduce<{ id: string; amount: number } | null>((best, p) => {
+    const amount =
+      p.type === "percent"
+        ? round((subtotal * Number(p.value ?? 0)) / 100)
+        : Math.min(round(Number(p.value ?? 0)), subtotal);
+    return !best || amount > best.amount ? { id: p.id, amount } : best;
+  }, null);
+  if (bestMonetary && bestMonetary.amount > discount_amount) {
+    discount_amount = bestMonetary.amount;
+    discount_code = null;
+    promotion_id = bestMonetary.id;
+  }
+  const freeShippingPromotion = eligible.find((p) => p.type === "free_shipping");
+  if (freeShippingPromotion && !promotion_id) promotion_id = freeShippingPromotion.id;
+
   const netAfterDiscount = round(subtotal - discount_amount);
   const threshold = settings.free_shipping_threshold;
   const shipping_cost =
-    threshold != null && netAfterDiscount >= Number(threshold) ? 0 : Number(settings.shipping_cost);
+    freeShippingPromotion || (threshold != null && netAfterDiscount >= Number(threshold))
+      ? 0
+      : Number(settings.shipping_cost);
 
   const total = round(netAfterDiscount + shipping_cost);
   // Prices are gross (VAT included), as required for EU consumer pricing.
@@ -168,6 +217,7 @@ export async function priceCart(input: OrderInput) {
     subtotal,
     discount_amount,
     discount_code,
+    promotion_id,
     shipping_cost,
     vat_rate,
     vat_amount,
@@ -223,6 +273,11 @@ export async function createOrderRecord(
       subtotal: priced.subtotal,
       discount_amount: priced.discount_amount,
       discount_code: priced.discount_code,
+      promotion_id: priced.promotion_id,
+      utm_source: input.utm_source ?? null,
+      utm_medium: input.utm_medium ?? null,
+      utm_campaign: input.utm_campaign ?? null,
+      utm_content: input.utm_content ?? null,
       shipping_cost: priced.shipping_cost,
       // orders.vat_rate is numeric(5,4) — stored as a fraction (0.19), not 19.
       vat_rate: round((priced.vat_rate / 100) * 10000) / 10000,
@@ -394,6 +449,20 @@ export async function fulfilOrder(
         .from("discount_codes")
         .update({ uses_so_far: code.uses_so_far + 1 })
         .eq("id", code.id);
+    }
+  }
+
+  if (order.promotion_id) {
+    const { data: promotion } = await supabaseAdmin
+      .from("promotions")
+      .select("id, usage_count")
+      .eq("id", order.promotion_id)
+      .maybeSingle();
+    if (promotion) {
+      await supabaseAdmin
+        .from("promotions")
+        .update({ usage_count: promotion.usage_count + 1 })
+        .eq("id", promotion.id);
     }
   }
 

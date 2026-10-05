@@ -295,6 +295,7 @@ export type Database = {
           payment_intent_id: string | null;
           payment_method: string | null;
           payment_status: Database["public"]["Enums"]["payment_status"];
+          promotion_id: string | null;
           razorpay_order_id: string | null;
           razorpay_payment_id: string | null;
           shipped_at: string | null;
@@ -309,6 +310,10 @@ export type Database = {
           total: number;
           tracking_number: string | null;
           updated_at: string;
+          utm_campaign: string | null;
+          utm_content: string | null;
+          utm_medium: string | null;
+          utm_source: string | null;
           vat_amount: number;
           vat_rate: number;
         };
@@ -334,6 +339,7 @@ export type Database = {
           payment_intent_id?: string | null;
           payment_method?: string | null;
           payment_status?: Database["public"]["Enums"]["payment_status"];
+          promotion_id?: string | null;
           razorpay_order_id?: string | null;
           razorpay_payment_id?: string | null;
           shipped_at?: string | null;
@@ -348,6 +354,10 @@ export type Database = {
           total?: number;
           tracking_number?: string | null;
           updated_at?: string;
+          utm_campaign?: string | null;
+          utm_content?: string | null;
+          utm_medium?: string | null;
+          utm_source?: string | null;
           vat_amount?: number;
           vat_rate?: number;
         };
@@ -373,6 +383,7 @@ export type Database = {
           payment_intent_id?: string | null;
           payment_method?: string | null;
           payment_status?: Database["public"]["Enums"]["payment_status"];
+          promotion_id?: string | null;
           razorpay_order_id?: string | null;
           razorpay_payment_id?: string | null;
           shipped_at?: string | null;
@@ -387,6 +398,10 @@ export type Database = {
           total?: number;
           tracking_number?: string | null;
           updated_at?: string;
+          utm_campaign?: string | null;
+          utm_content?: string | null;
+          utm_medium?: string | null;
+          utm_source?: string | null;
           vat_amount?: number;
           vat_rate?: number;
         };
@@ -508,6 +523,60 @@ export type Database = {
           vat_rate?: number;
           warranty_info?: string;
           weight_kg?: number;
+        };
+        Relationships: [];
+      };
+      promotions: {
+        Row: {
+          applies_to: string;
+          category_ids: string[] | null;
+          created_at: string;
+          description: string | null;
+          end_at: string | null;
+          id: string;
+          min_order: number | null;
+          name: string;
+          product_ids: string[] | null;
+          start_at: string | null;
+          status: string;
+          type: string;
+          updated_at: string;
+          usage_count: number;
+          value: number | null;
+        };
+        Insert: {
+          applies_to?: string;
+          category_ids?: string[] | null;
+          created_at?: string;
+          description?: string | null;
+          end_at?: string | null;
+          id?: string;
+          min_order?: number | null;
+          name: string;
+          product_ids?: string[] | null;
+          start_at?: string | null;
+          status?: string;
+          type?: string;
+          updated_at?: string;
+          usage_count?: number;
+          value?: number | null;
+        };
+        Update: {
+          applies_to?: string;
+          category_ids?: string[] | null;
+          created_at?: string;
+          description?: string | null;
+          end_at?: string | null;
+          id?: string;
+          min_order?: number | null;
+          name?: string;
+          product_ids?: string[] | null;
+          start_at?: string | null;
+          status?: string;
+          type?: string;
+          updated_at?: string;
+          usage_count?: number;
+          value?: number | null;
         };
         Relationships: [];
       };
