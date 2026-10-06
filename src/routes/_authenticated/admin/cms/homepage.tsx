@@ -49,6 +49,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 function HomepageEditor() {
   const qc = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [uploadingSlide, setUploadingSlide] = useState<number | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["cms", "homepage"],
@@ -111,8 +112,6 @@ function HomepageEditor() {
   function removeSlide(index: number) {
     setForm((f) => ({ ...f, hero_slides: f.hero_slides.filter((_, i) => i !== index) }));
   }
-
-  const [uploadingSlide, setUploadingSlide] = useState<number | null>(null);
 
   async function uploadSlideImage(index: number, file: File) {
     setUploadingSlide(index);
