@@ -24,15 +24,20 @@ function FinancialAnalytics() {
 
   const f = data;
 
-  // Waterfall from gross sales down to net revenue.
-  const lines: { label: string; value: number; kind: "add" | "sub" | "total" }[] = f
+  // Waterfall from gross sales down to net revenue. Prices are VAT-inclusive
+  // (gross) throughout checkout, so taxes_collected is already embedded in
+  // every line below it, not an amount added on top — total_revenue is
+  // exactly net_sales + shipping_revenue; adding taxes again here would
+  // overstate the running total by the VAT amount. It's shown as a memo
+  // line instead of an addition in the chain.
+  const lines: { label: string; value: number; kind: "add" | "sub" | "total" | "memo" }[] = f
     ? [
         { label: "Gross sales", value: f.gross_sales, kind: "add" },
         { label: "Discounts", value: -f.discounts, kind: "sub" },
         { label: "Net sales", value: f.net_sales, kind: "total" },
         { label: "Shipping revenue", value: f.shipping_revenue, kind: "add" },
-        { label: "Taxes collected", value: f.taxes_collected, kind: "add" },
         { label: "Total revenue", value: f.total_revenue, kind: "total" },
+        { label: "— of which VAT (included above)", value: f.taxes_collected, kind: "memo" },
         { label: "Refunds", value: -f.refunds_total, kind: "sub" },
         { label: "Net revenue", value: f.net_revenue, kind: "total" },
       ]
@@ -85,7 +90,9 @@ function FinancialAnalytics() {
                 {lines.map((l) => (
                   <tr
                     key={l.label}
-                    className={`border-b border-border/50 ${l.kind === "total" ? "font-semibold" : ""}`}
+                    className={`border-b border-border/50 ${l.kind === "total" ? "font-semibold" : ""} ${
+                      l.kind === "memo" ? "text-xs text-muted-foreground italic" : ""
+                    }`}
                   >
                     <td className="py-2">{l.label}</td>
                     <td className={`py-2 text-right ${l.kind === "sub" ? "text-destructive" : ""}`}>

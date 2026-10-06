@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getProductAnalytics } from "@/lib/api/analytics";
+import { getProducts } from "@/lib/api/products";
 import { money, toCsv, downloadFile } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
@@ -19,6 +20,11 @@ function ProductAnalytics() {
     queryKey: ["analytics", "products", range],
     queryFn: () => getProductAnalytics(range, 100, 0),
   });
+  // analytics_products() is built FROM order_items, so it only ever returns
+  // products that sold at least one unit in range — there's no zero-units
+  // row to filter for. Cross-referencing the full catalogue is the only way
+  // to find products that didn't sell at all.
+  const allProducts = useQuery({ queryKey: ["products"], queryFn: () => getProducts() });
 
   if (error) return <ErrorState error={error} />;
 
@@ -30,7 +36,10 @@ function ProductAnalytics() {
   const viewToPurchase = totalViews > 0 ? Math.round((totalUnits / totalViews) * 1000) / 10 : 0;
 
   const best = rows.slice(0, 5);
-  const noSales = rows.filter((r) => r.units_sold === 0).slice(0, 5);
+  const soldIds = new Set(rows.map((r) => r.product_id));
+  const noSales = (allProducts.data ?? [])
+    .filter((p) => !soldIds.has(p.id))
+    .slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -87,15 +96,17 @@ function ProductAnalytics() {
               </ol>
             </Section>
             <Section title="No Sales This Period">
-              {noSales.length === 0 ? (
+              {allProducts.isLoading ? (
+                <LoadingState />
+              ) : noSales.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Every product sold at least once.</p>
               ) : (
                 <ul className="space-y-2 text-sm">
-                  {noSales.map((r) => (
-                    <li key={r.product_id} className="flex items-center justify-between gap-4">
-                      <span className="truncate">{r.product_name}</span>
-                      <span className="whitespace-nowrap text-xs text-muted-foreground">
-                        {r.view_count} views
+                  {noSales.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-4">
+                      <span className="truncate">{p.name}</span>
+                      <span className="whitespace-nowrap text-xs text-muted-foreground capitalize">
+                        {p.is_published ? "live" : "not live"}
                       </span>
                     </li>
                   ))}

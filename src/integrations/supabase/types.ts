@@ -580,6 +580,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      custom_reports: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          date_range: string | null;
+          description: string | null;
+          dimensions: string[];
+          filters: Json;
+          grouping: string | null;
+          id: string;
+          is_scheduled: boolean;
+          last_run_at: string | null;
+          metric: string;
+          name: string;
+          schedule_cron: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          date_range?: string | null;
+          description?: string | null;
+          dimensions?: string[];
+          filters?: Json;
+          grouping?: string | null;
+          id?: string;
+          is_scheduled?: boolean;
+          last_run_at?: string | null;
+          metric: string;
+          name: string;
+          schedule_cron?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          date_range?: string | null;
+          description?: string | null;
+          dimensions?: string[];
+          filters?: Json;
+          grouping?: string | null;
+          id?: string;
+          is_scheduled?: boolean;
+          last_run_at?: string | null;
+          metric?: string;
+          name?: string;
+          schedule_cron?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       return_events: {
         Row: {
           created_at: string;
