@@ -126,17 +126,36 @@ function HomepageEditor() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-20">
       <PageHeader
         eyebrow="Content"
         title="Homepage"
         description="Only what the storefront homepage actually renders: the hero carousel, the reviews strip and the featured-products grid."
         actions={
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            Save changes
+            {save.isPending ? "Saving…" : "Save changes"}
           </Button>
         }
       />
+
+      {/* The page is long once a few slides are added — the header's Save
+          button scrolls out of view, so nothing visible confirms changes
+          can be saved while editing further down. This bar stays on screen
+          the whole time and is the same mutation as the header button. */}
+      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center border-t border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
+        <div className="flex w-full max-w-3xl items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {save.isPending
+              ? "Saving…"
+              : save.isSuccess
+                ? "Saved."
+                : "Remember to save after adding, editing or removing a slide."}
+          </p>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </div>
 
       <Section
         title="Hero carousel"
