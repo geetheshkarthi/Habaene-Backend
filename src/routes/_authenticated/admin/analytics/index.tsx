@@ -165,7 +165,7 @@ function AnalyticsPage() {
         <StatCard
           label="Total Revenue"
           value={money(s?.revenue ?? 0)}
-          sub="Paid orders only"
+          sub="All orders, excluding cancelled"
           change={cmp?.revenue_growth}
         />
         <StatCard label="Total Orders" value={s?.orders ?? 0} change={cmp?.orders_growth} />
