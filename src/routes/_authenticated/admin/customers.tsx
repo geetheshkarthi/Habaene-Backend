@@ -12,7 +12,9 @@ import { getOrdersByCustomerEmail } from "@/lib/api/orders";
 import { sendCustomerMessageFn } from "@/lib/commerce.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { money, dateShort, dateTime, downloadFile, toCsv } from "@/lib/format";
+import type { Address } from "@/lib/api/types";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { StatusBadge } from "@/components/admin/StatusBadge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +39,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Mail, RefreshCw, Search, Sparkles, UserPlus, Clock3 } from "lucide-react";
+import { Mail, RefreshCw, Search, Sparkles, UserPlus, Clock3, Eye, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/customers")({
@@ -75,6 +77,20 @@ const TABS: { value: Segment | "all"; label: string }[] = [
   { value: "new", label: "New" },
   { value: "inactive", label: "Inactive (30d+)" },
 ];
+
+function formatAddress(value: unknown): string {
+  const a = (value ?? {}) as Address;
+  return [
+    [a.first_name, a.last_name].filter(Boolean).join(" "),
+    a.company,
+    a.line1,
+    a.line2,
+    [a.postal_code, a.city].filter(Boolean).join(" "),
+    a.country,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 function initials(c: CustomerListRow): string {
   const letter = (c.first_name || c.email)[0];
@@ -229,9 +245,16 @@ function CustomersPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        <p className="text-sm text-muted-foreground">
+        <label className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Checkbox
+            checked={filtered.length > 0 && filtered.every((c) => selected.has(c.id))}
+            onCheckedChange={(v) =>
+              setSelected(v ? new Set(filtered.map((c) => c.id)) : new Set())
+            }
+            aria-label="Select all customers"
+          />
           {selected.size} customer(s) selected for messaging
-        </p>
+        </label>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -264,75 +287,96 @@ function CustomersPage() {
       ) : filtered.length === 0 ? (
         <EmptyState title="No customers" description="Customers appear the moment someone signs in." />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {filtered.map((c) => {
             const meta = SEGMENT_META[c.segment];
             const Icon = meta.icon;
             const avgOrder = c.order_count > 0 ? c.total_spent / c.order_count : 0;
+            const fullName = [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed";
             return (
-              <div key={c.id} className="rounded-lg border border-border bg-card p-5">
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selected.has(c.id)}
-                    onCheckedChange={() => toggle(c.id)}
-                    className="mt-1"
-                  />
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
-                    {initials(c)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-medium">
-                        {c.first_name} {c.last_name}
-                      </p>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        <Icon className="h-3 w-3" />
-                        {meta.label}
-                      </span>
+              <div
+                key={c.id}
+                className={cn(
+                  "rounded-lg border bg-card p-5 transition-colors",
+                  selected.has(c.id) ? "border-foreground" : "border-border",
+                )}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selected.has(c.id)}
+                      onCheckedChange={() => toggle(c.id)}
+                      aria-label={`Select ${fullName}`}
+                    />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+                      {initials(c)}
                     </div>
-                    <p className="truncate text-xs text-muted-foreground">{c.email}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{fullName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Customer since {dateShort(c.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      <Icon className="h-3 w-3" />
+                      {meta.label}
+                    </span>
+                    {c.newsletter_opt_in && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        Newsletter
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setProfile(c)}>
+                      <Eye className="h-4 w-4" />
+                      View Details
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setMessageForm({ subject: "", body: "" });
+                        setMessageFor([c.id]);
+                      }}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Message
+                    </Button>
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2 border-y border-border py-3 text-center">
+                <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                  <div className="min-w-0">
+                    <p className="eyebrow text-muted-foreground">Contact</p>
+                    <p className="mt-1 truncate text-sm font-medium">{c.email}</p>
+                    <p className="text-xs text-muted-foreground">{c.phone || "No phone"}</p>
+                  </div>
                   <div>
-                    <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
-                      Total Spent
+                    <p className="eyebrow text-muted-foreground">Orders</p>
+                    <p className="mt-1 text-sm font-medium">{c.order_count}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.order_count === 1 ? "1 order placed" : `${c.order_count} orders placed`}
                     </p>
-                    <p className="mt-1 text-sm font-semibold">{money(c.total_spent)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] tracking-wide text-muted-foreground uppercase">Orders</p>
-                    <p className="mt-1 text-sm font-semibold">{c.order_count}</p>
+                    <p className="eyebrow text-muted-foreground">Total spent</p>
+                    <p className="mt-1 text-sm font-medium">{money(c.total_spent)}</p>
+                    <p className="text-xs text-muted-foreground">Paid orders only</p>
                   </div>
                   <div>
-                    <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
-                      Avg Order
+                    <p className="eyebrow text-muted-foreground">Avg order</p>
+                    <p className="mt-1 text-sm font-medium">{money(avgOrder)}</p>
+                  </div>
+                  <div className="lg:text-right">
+                    <p className="eyebrow text-muted-foreground">Joined</p>
+                    <p className="mt-1 text-sm font-medium">{dateShort(c.created_at)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Updated {dateShort(c.updated_at)}
                     </p>
-                    <p className="mt-1 text-sm font-semibold">{money(avgOrder)}</p>
                   </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Phone: {c.phone || "—"}</span>
-                  <span>Joined: {dateShort(c.created_at)}</span>
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setProfile(c)}>
-                    View Profile &amp; History
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setMessageForm({ subject: "", body: "" });
-                      setMessageFor([c.id]);
-                    }}
-                  >
-                    <Mail className="h-4 w-4" />
-                    Message
-                  </Button>
                 </div>
               </div>
             );
@@ -415,6 +459,15 @@ function CustomersPage() {
   );
 }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-4 py-1">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right">{children}</dd>
+    </div>
+  );
+}
+
 function ProfileHistory({
   customer,
   onExport,
@@ -431,48 +484,103 @@ function ProfileHistory({
     queryFn: () => getOrdersByCustomerEmail(customer.email),
   });
 
+  const list = orders.data ?? [];
+  const latest = list[0];
+  const avgOrder = customer.order_count > 0 ? customer.total_spent / customer.order_count : 0;
+  const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ") || "Unnamed";
+  const shipping = latest ? formatAddress(latest.shipping_address) : "";
+  const billing = latest ? formatAddress(latest.billing_address) : "";
+
   return (
     <>
       <SheetHeader>
-        <SheetTitle>
-          {customer.first_name} {customer.last_name}
+        <SheetTitle className="flex items-center gap-2">
+          <User className="h-4 w-4" />
+          {fullName}
         </SheetTitle>
       </SheetHeader>
       <div className="space-y-6 px-4 pb-8 text-sm">
-        <dl className="space-y-1">
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Email</dt>
-            <dd>{customer.email}</dd>
+        <div className="grid grid-cols-3 gap-2 rounded-lg border border-border py-3 text-center">
+          <div>
+            <p className="text-[10px] tracking-wide text-muted-foreground uppercase">Total spent</p>
+            <p className="mt-1 font-semibold">{money(customer.total_spent)}</p>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Phone</dt>
-            <dd>{customer.phone || "—"}</dd>
+          <div>
+            <p className="text-[10px] tracking-wide text-muted-foreground uppercase">Orders</p>
+            <p className="mt-1 font-semibold">{customer.order_count}</p>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Joined</dt>
-            <dd>{dateTime(customer.created_at)}</dd>
+          <div>
+            <p className="text-[10px] tracking-wide text-muted-foreground uppercase">Avg order</p>
+            <p className="mt-1 font-semibold">{money(avgOrder)}</p>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Total spent</dt>
-            <dd>{money(customer.total_spent)}</dd>
-          </div>
-        </dl>
+        </div>
 
         <section>
-          <span className="eyebrow text-muted-foreground">Order history</span>
+          <span className="eyebrow text-muted-foreground">Profile</span>
+          <dl className="mt-2 divide-y divide-border">
+            <Field label="Name">{fullName}</Field>
+            <Field label="Email">{customer.email}</Field>
+            <Field label="Phone">{customer.phone || "—"}</Field>
+            <Field label="Joined">{dateTime(customer.created_at)}</Field>
+            <Field label="Last updated">{dateTime(customer.updated_at)}</Field>
+            <Field label="Last order">{latest ? dateTime(latest.created_at) : "—"}</Field>
+            <Field label="Newsletter">
+              {customer.newsletter_opt_in ? "Subscribed" : "Not subscribed"}
+            </Field>
+            <Field label="GDPR consent">
+              {customer.gdpr_consent_at ? dateTime(customer.gdpr_consent_at) : "—"}
+            </Field>
+            {customer.stripe_customer_id && (
+              <Field label="Stripe customer">{customer.stripe_customer_id}</Field>
+            )}
+          </dl>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <span className="eyebrow text-muted-foreground">Shipping address</span>
+            <p className="mt-2 whitespace-pre-line">{shipping || "—"}</p>
+          </div>
+          <div>
+            <span className="eyebrow text-muted-foreground">Billing address</span>
+            <p className="mt-2 whitespace-pre-line">{billing || "—"}</p>
+          </div>
+        </section>
+
+        <section>
+          <span className="eyebrow text-muted-foreground">Order history ({list.length})</span>
           {orders.isLoading ? (
             <p className="mt-2 text-muted-foreground">Loading…</p>
-          ) : orders.data && orders.data.length > 0 ? (
-            <ul className="mt-3 space-y-2">
-              {orders.data.map((o) => (
-                <li key={o.id} className="flex justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{o.order_number}</p>
-                    <p className="text-xs text-muted-foreground">{dateTime(o.created_at)}</p>
+          ) : list.length > 0 ? (
+            <ul className="mt-3 space-y-3">
+              {list.map((o) => (
+                <li key={o.id} className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">Order #{o.order_number}</p>
+                      <p className="text-xs text-muted-foreground">{dateTime(o.created_at)}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge value={o.status} />
+                      <StatusBadge value={o.payment_status} />
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p>{money(o.total)}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{o.status}</p>
+                  <ul className="mt-2 space-y-0.5">
+                    {o.order_items.map((it) => (
+                      <li key={it.id} className="flex justify-between gap-4 text-xs">
+                        <span className="truncate">
+                          {it.quantity} × {it.product_name}
+                        </span>
+                        <span>{money(it.subtotal)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs">
+                    <span className="text-muted-foreground capitalize">
+                      {o.payment_method || "—"}
+                      {o.tracking_number ? ` · Tracking ${o.tracking_number}` : ""}
+                    </span>
+                    <span className="text-sm font-semibold">{money(o.total)}</span>
                   </div>
                 </li>
               ))}
