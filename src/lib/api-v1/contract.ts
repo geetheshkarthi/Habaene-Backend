@@ -54,6 +54,16 @@ export interface PublicProduct {
   colors: unknown;
   sizes: unknown;
   weight_kg: number;
+  mood: unknown;
+  pack_items: unknown;
+  passport_service: string;
+  passport_role: string;
+  materials: string;
+  care_instructions: string;
+  product_story: string;
+  warranty_info: string;
+  blueprint: unknown;
+  position: number;
 }
 
 export interface ProductListResult {
@@ -90,6 +100,12 @@ export interface OrderInputBody {
   discount_code?: string;
   newsletter_opt_in?: boolean;
   gdpr_consent_text?: string;
+  /** Captured from the URL on first visit and replayed at checkout so the
+   * Campaigns admin page can attribute orders to a UTM-tagged campaign. */
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
 }
 
 export interface CheckoutInputBody extends OrderInputBody {
@@ -129,6 +145,7 @@ export interface CheckoutSessionResult extends OrderTotals {
 }
 
 export interface PublicOrderItem {
+  product_id: string | null;
   product_name: string;
   product_code: string;
   quantity: number;
@@ -140,6 +157,7 @@ export interface PublicOrderItem {
 }
 
 export interface PublicOrder extends OrderTotals {
+  id: string;
   order_number: string;
   status: string;
   payment_status: string;
@@ -262,4 +280,3 @@ export type SystemCheckResult = Record<SystemCheckComponent, HealthState> & {
   timestamp: string;
   details: Record<SystemCheckComponent, SystemCheckDetail>;
 };
-

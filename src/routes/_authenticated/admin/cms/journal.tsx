@@ -10,6 +10,8 @@ import {
   type JournalArticle,
 } from "@/lib/api/cms";
 import { dateShort, slugify } from "@/lib/format";
+import { uploadProductImage } from "@/lib/api/storage";
+import { imageUrl } from "@/lib/config";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -86,6 +88,22 @@ function JournalPage() {
   const [editing, setEditing] = useState<JournalArticle | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function uploadFeaturedImage(file: File) {
+    setUploadingImage(true);
+    try {
+      const path = await uploadProductImage(file, {
+        productSlug: form.slug || "journal",
+        kind: "card",
+      });
+      setForm((f) => ({ ...f, featured_image: path }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["cms", "journal", filter],
@@ -336,11 +354,26 @@ function JournalPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Featured image URL</Label>
-                <Input
-                  value={form.featured_image}
-                  onChange={(e) => setForm((f) => ({ ...f, featured_image: e.target.value }))}
-                />
+                <Label>Featured image</Label>
+                <div className="flex items-center gap-3">
+                  {form.featured_image && (
+                    <img
+                      src={imageUrl(form.featured_image) ?? undefined}
+                      alt=""
+                      className="h-14 w-14 rounded-md border border-border object-cover"
+                    />
+                  )}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingImage}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void uploadFeaturedImage(file);
+                    }}
+                  />
+                </div>
+                {uploadingImage && <p className="text-xs text-muted-foreground">Uploading…</p>}
               </div>
               <div className="space-y-2">
                 <Label>Video URL</Label>

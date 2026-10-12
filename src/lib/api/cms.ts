@@ -28,6 +28,13 @@ export interface CmsPage {
   updated_at: string;
 }
 
+export interface HeroSlide {
+  image_url: string;
+  eyebrow: string;
+  heading: string;
+  sub: string;
+}
+
 export interface CmsHomepage {
   id: string;
   hero_heading: string | null;
@@ -36,6 +43,8 @@ export interface CmsHomepage {
   hero_cta_url: string | null;
   hero_images: string[];
   hero_video_url: string | null;
+  hero_slides: HeroSlide[];
+  homepage_reviews_count: number;
   featured_product_ids: string[];
   featured_collection_ids: string[];
   promotional_sections: unknown[];
@@ -118,6 +127,7 @@ export interface FaqItem {
 export interface Review {
   id: string;
   product_id: string;
+  products?: { name: string; code: string } | null;
   customer_id: string | null;
   order_id: string | null;
   customer_name: string;
@@ -371,7 +381,7 @@ export async function reorderFaqItems(orderedIds: string[]): Promise<void> {
 export async function getReviews(status?: string, productId?: string): Promise<Review[]> {
   let q = supabase
     .from("reviews")
-    .select("*")
+    .select("*, products(name, code)")
     .order("created_at", { ascending: false });
   if (status) q = q.eq("status", status);
   if (productId) q = q.eq("product_id", productId);

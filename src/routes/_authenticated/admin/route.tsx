@@ -51,9 +51,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/products", label: "Products" },
       { to: "/admin/inventory", label: "Inventory" },
-      { to: "/admin/warehouses", label: "Warehouses" },
-      { to: "/admin/purchase-orders", label: "Purchase Orders" },
-      { to: "/admin/product-drops", label: "Product Drops" },
     ],
   },
   {
@@ -92,12 +89,8 @@ const NAV_GROUPS: NavGroup[] = [
     icon: FileText,
     items: [
       { to: "/admin/cms/homepage", label: "Homepage" },
-      { to: "/admin/cms/pages", label: "Pages" },
-      { to: "/admin/cms/navigation", label: "Navigation" },
-      { to: "/admin/cms/announcements", label: "Announcements" },
       { to: "/admin/cms/journal", label: "Journal" },
       { to: "/admin/cms/faq", label: "FAQ" },
-      { to: "/admin/cms/media", label: "Media Library" },
     ],
   },
   {

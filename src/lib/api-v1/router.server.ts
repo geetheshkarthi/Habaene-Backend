@@ -76,6 +76,11 @@ export async function dispatch(request: Request, path: string): Promise<Response
         if (method !== "POST") return methodNotAllowed(method);
         return ok(await h.submitContact(await body(request)), 201);
 
+      case "promotions": {
+        if (method !== "GET") return methodNotAllowed(method);
+        return ok(await h.getActivePromotions());
+      }
+
       case "discounts":
         if (method === "POST" && second === "validate") {
           return ok(await h.validateDiscount(await body(request)));
@@ -98,6 +103,11 @@ export async function dispatch(request: Request, path: string): Promise<Response
       }
 
       case "wishlist": {
+        if (method === "GET" && !second) {
+          const email = url.searchParams.get("customer_email");
+          if (!email) return fail(400, "validation_error", "customer_email is required");
+          return ok(await h.getWishlistForCustomer(email));
+        }
         if (method === "POST" && !second) return ok(await h.addToWishlist(await body(request)), 201);
         if (method === "DELETE" && second) return ok(await h.removeFromWishlist(second));
         return fail(404, "not_found", "Unknown wishlist endpoint");
@@ -118,8 +128,20 @@ export async function dispatch(request: Request, path: string): Promise<Response
         return ok(await h.getFaqItems(url));
       }
 
+      case "homepage": {
+        if (method !== "GET") return methodNotAllowed(method);
+        return ok(await h.getPublicHomepage());
+      }
+
+      case "journal": {
+        if (method !== "GET") return methodNotAllowed(method);
+        return second ? ok(await h.getJournalBySlug(second)) : ok(await h.getJournalList(url));
+      }
+
       case "reviews": {
+        if (method === "GET" && second === "stats") return ok(await h.getReviewStats(url));
         if (method === "GET") return ok(await h.getReviews(url));
+        if (method === "POST" && second === "photos") return ok(await h.uploadReviewPhoto(request), 201);
         if (method === "POST" && !second) return ok(await h.submitReview(await body(request)), 201);
         return methodNotAllowed(method);
       }

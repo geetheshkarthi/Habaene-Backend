@@ -1,19 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   getRevenueSeries,
   getProductAnalytics,
   getGeographicAnalytics,
   getAllDaysOfWeekAnalytics,
   dayName,
+  type DatePreset,
 } from "@/lib/api/analytics";
+import {
+  getSavedReports,
+  createSavedReport,
+  deleteSavedReport,
+  type SavedReport,
+} from "@/lib/api/reports";
 import { money, dateShort, toCsv, downloadFile } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics/reports")({
@@ -41,11 +50,55 @@ const DIMENSIONS: { value: Dimension; label: string }[] = [
 type Row = { label: string; revenue: number; orders: number; units: number; aov: number };
 
 function CustomReports() {
+  const qc = useQueryClient();
   const { range, pickerProps } = useDateRange();
   const [metric, setMetric] = useState<Metric>("revenue");
   const [dimension, setDimension] = useState<Dimension>("product");
   const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
   const [minValue, setMinValue] = useState<string>("");
+  const [reportName, setReportName] = useState("");
+
+  const savedReports = useQuery({ queryKey: ["saved-reports"], queryFn: getSavedReports });
+
+  const save = useMutation({
+    mutationFn: () =>
+      createSavedReport({
+        name: reportName.trim(),
+        metric,
+        dimensions: [dimension],
+        filters: minValue === "" ? {} : { min: Number(minValue) },
+        date_range: pickerProps.preset,
+        grouping: granularity,
+      }),
+    onSuccess: () => {
+      toast.success("Report saved");
+      setReportName("");
+      qc.invalidateQueries({ queryKey: ["saved-reports"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteSavedReport(id),
+    onSuccess: () => {
+      toast.success("Report deleted");
+      qc.invalidateQueries({ queryKey: ["saved-reports"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function loadReport(r: SavedReport) {
+    setMetric(r.metric as Metric);
+    const dim = r.dimensions[0];
+    if (dim) setDimension(dim as Dimension);
+    if (r.grouping) setGranularity(r.grouping as "day" | "week" | "month");
+    if (r.date_range && r.date_range !== "custom") {
+      pickerProps.onPresetChange(r.date_range as DatePreset);
+    }
+    const min = (r.filters as { min?: number } | null)?.min;
+    setMinValue(min != null ? String(min) : "");
+    toast.success(`Loaded "${r.name}"`);
+  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports", dimension, range, granularity],
@@ -196,6 +249,23 @@ function CustomReports() {
         <div className="mt-4">
           <DateRangePicker {...pickerProps} />
         </div>
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-4">
+          <div className="min-w-[200px] flex-1 space-y-2">
+            <Label>Save this report as</Label>
+            <Input
+              value={reportName}
+              onChange={(e) => setReportName(e.target.value)}
+              placeholder="e.g. Monthly product revenue"
+            />
+          </div>
+          <Button
+            variant="outline"
+            disabled={!reportName.trim() || save.isPending}
+            onClick={() => save.mutate()}
+          >
+            {save.isPending ? "Saving…" : "Save report"}
+          </Button>
+        </div>
       </Section>
 
       {isLoading ? (
@@ -250,11 +320,42 @@ function CustomReports() {
       )}
 
       <Section title="Saved Reports">
-        <p className="text-sm text-muted-foreground">
-          Saving and scheduling reports requires the <code className="text-xs">custom_reports</code>{" "}
-          table, which is not yet present in this database. Apply the outstanding migration to
-          enable it.
-        </p>
+        {savedReports.isLoading ? (
+          <LoadingState />
+        ) : !savedReports.data?.length ? (
+          <p className="text-sm text-muted-foreground">
+            No saved reports yet — build one above and give it a name to save it here.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {savedReports.data.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{r.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {METRICS.find((m) => m.value === r.metric)?.label ?? r.metric} by{" "}
+                    {DIMENSIONS.find((d) => d.value === r.dimensions[0])?.label ?? r.dimensions[0]}
+                    {r.date_range ? ` · ${r.date_range.replace(/_/g, " ")}` : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => loadReport(r)}>
+                    Load
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={remove.isPending && remove.variables === r.id}
+                    onClick={() => remove.mutate(r.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
     </div>
   );

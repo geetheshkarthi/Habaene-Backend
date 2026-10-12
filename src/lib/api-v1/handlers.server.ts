@@ -41,7 +41,7 @@ import { SYSTEM_CHECK_COMPONENTS } from "./contract";
 export const APP_VERSION = "1.0.0";
 
 const PRODUCT_COLUMNS =
-  "id, code, name, slug, subtitle, description, badge, category, price, vat_rate, stock, images, card_image, passport_code, specs, colors, sizes, weight_kg";
+  "id, code, name, slug, subtitle, description, badge, category, price, vat_rate, stock, images, card_image, passport_code, specs, colors, sizes, weight_kg, mood, pack_items, passport_service, passport_role, materials, care_instructions, product_story, warranty_info, blueprint, position";
 
 type ProductRow = {
   price: number | string;
@@ -57,7 +57,8 @@ function toPublicProduct(row: ProductRow): PublicProduct {
     ...(row as unknown as PublicProduct),
     price: num(row.price),
     // Public API always expresses VAT in percentage points (19), never 0.19.
-    vat_rate: num(row.vat_rate) > 1 ? num(row.vat_rate) : Math.round(num(row.vat_rate) * 10000) / 100,
+    vat_rate:
+      num(row.vat_rate) > 1 ? num(row.vat_rate) : Math.round(num(row.vat_rate) * 10000) / 100,
     weight_kg: num(row.weight_kg),
     stock: row.stock,
     in_stock: row.stock > 0,
@@ -84,8 +85,9 @@ export async function listProducts(url: URL): Promise<ProductListResult> {
   let query = supabaseAdmin
     .from("products")
     .select(PRODUCT_COLUMNS, { count: "exact" })
-    .eq("is_active", true)
+    .eq("is_published", true)
     .is("deleted_at", null)
+    .order("position", { ascending: true })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -117,7 +119,7 @@ export async function getProductBySlug(slug: string): Promise<PublicProduct> {
     .from("products")
     .select(PRODUCT_COLUMNS)
     .eq("slug", slug)
-    .eq("is_active", true)
+    .eq("is_published", true)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -191,6 +193,7 @@ export async function getOrder(orderNumber: string, url: URL): Promise<PublicOrd
     : null;
 
   return {
+    id: data.id,
     order_number: data.order_number,
     status: data.status,
     payment_status: data.payment_status,
@@ -202,12 +205,14 @@ export async function getOrder(orderNumber: string, url: URL): Promise<PublicOrd
     subtotal: num(data.subtotal),
     discount_amount: num(data.discount_amount),
     shipping_cost: num(data.shipping_cost),
-    vat_rate: num(data.vat_rate) > 1 ? num(data.vat_rate) : Math.round(num(data.vat_rate) * 10000) / 100,
+    vat_rate:
+      num(data.vat_rate) > 1 ? num(data.vat_rate) : Math.round(num(data.vat_rate) * 10000) / 100,
     vat_amount: num(data.vat_amount),
     total: num(data.total),
     currency: data.currency,
     withdrawal_deadline,
     items: data.order_items.map((i) => ({
+      product_id: i.product_id,
       product_name: i.product_name,
       product_code: i.product_code,
       quantity: i.quantity,
@@ -238,8 +243,9 @@ export async function createCheckout(payload: unknown): Promise<CheckoutSessionR
       order_number: result.order_number,
       payment_provider: result.payment_provider,
       checkout_url: result.checkout_url,
-      ...(result.razorpay_order_id ? { razorpay_order_id: result.razorpay_order_id } : {}),
-      ...(result.razorpay_key_id ? { razorpay_key_id: result.razorpay_key_id } : {}),
+      ...("razorpay_order_id" in result
+        ? { razorpay_order_id: result.razorpay_order_id, razorpay_key_id: result.razorpay_key_id }
+        : {}),
       subtotal: result.subtotal,
       discount_amount: result.discount_amount,
       shipping_cost: result.shipping_cost,
@@ -461,7 +467,7 @@ export async function submitContact(payload: unknown): Promise<ContactResult> {
       name: input.name,
       email: input.email,
       message: input.message,
-      ...(input.subject ? { subject: input.subject } : {})
+      ...(input.subject ? { subject: input.subject } : {}),
     });
     await sendEmail({ to: "support@habaene.com", ...mail });
   } catch (err) {
@@ -495,7 +501,8 @@ export async function validateDiscount(payload: unknown): Promise<DiscountValida
   });
 
   if (!code) return invalid("This code does not exist");
-  if (code.expires_at && new Date(code.expires_at) < new Date()) return invalid("This code expired");
+  if (code.expires_at && new Date(code.expires_at) < new Date())
+    return invalid("This code expired");
   if (code.max_uses != null && code.uses_so_far >= code.max_uses) {
     return invalid("This code has reached its usage limit");
   }
@@ -517,6 +524,23 @@ export async function validateDiscount(payload: unknown): Promise<DiscountValida
   };
 }
 
+/* -------------------------------- promotions ------------------------------- */
+
+/** Currently-active promotions, for a storefront banner — the same ones
+ * priceCart() will actually apply at checkout, so the message always
+ * matches what the customer's total reflects. */
+export async function getActivePromotions() {
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("promotions")
+    .select("id, name, description, type, value, min_order, applies_to")
+    .eq("status", "active")
+    .or(`start_at.is.null,start_at.lte.${now}`)
+    .or(`end_at.is.null,end_at.gte.${now}`);
+  if (error) throw new Error(error.message);
+  return { promotions: data ?? [] };
+}
+
 /* ------------------------------ store settings ----------------------------- */
 
 export async function getPublicStore(): Promise<PublicStoreSettings> {
@@ -530,7 +554,8 @@ export async function getPublicStore(): Promise<PublicStoreSettings> {
     currency: s.currency,
     vat_rate: rate > 1 ? rate : Math.round(rate * 10000) / 100,
     shipping_cost: num(s.shipping_cost),
-    free_shipping_threshold: s.free_shipping_threshold == null ? null : num(s.free_shipping_threshold),
+    free_shipping_threshold:
+      s.free_shipping_threshold == null ? null : num(s.free_shipping_threshold),
     withdrawal_window_days: s.withdrawal_window_days,
     social_links: (s.social_links ?? {}) as Record<string, string>,
     logo_url: s.logo_url,
@@ -577,30 +602,41 @@ export async function healthCheck(): Promise<HealthResult> {
       }
     : { status: "not_configured", message: "STRIPE_SECRET_KEY is missing" };
 
-  checks.razorpay = process.env["RAZORPAY_KEY_ID"] && process.env["RAZORPAY_KEY_SECRET"]
-    ? {
-        status: process.env["RAZORPAY_WEBHOOK_SECRET"] ? "ok" : "degraded",
-        ...(process.env["RAZORPAY_WEBHOOK_SECRET"]
-          ? {}
-          : { message: "RAZORPAY_WEBHOOK_SECRET is missing" }),
-      }
-    : { status: "not_configured", message: "RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET is missing" };
+  checks.razorpay =
+    process.env["RAZORPAY_KEY_ID"] && process.env["RAZORPAY_KEY_SECRET"]
+      ? {
+          status: process.env["RAZORPAY_WEBHOOK_SECRET"] ? "ok" : "degraded",
+          ...(process.env["RAZORPAY_WEBHOOK_SECRET"]
+            ? {}
+            : { message: "RAZORPAY_WEBHOOK_SECRET is missing" }),
+        }
+      : { status: "not_configured", message: "RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET is missing" };
 
-  checks.slice = process.env["SLICE_API_KEY"] && process.env["SLICE_API_SECRET"]
-    ? {
-        status: process.env["SLICE_WEBHOOK_SECRET"] ? "ok" : "degraded",
-        ...(process.env["SLICE_WEBHOOK_SECRET"] ? {} : { message: "SLICE_WEBHOOK_SECRET is missing" }),
-      }
-    : { status: "not_configured", message: "SLICE_API_KEY / SLICE_API_SECRET is missing" };
+  checks.slice =
+    process.env["SLICE_API_KEY"] && process.env["SLICE_API_SECRET"]
+      ? {
+          status: process.env["SLICE_WEBHOOK_SECRET"] ? "ok" : "degraded",
+          ...(process.env["SLICE_WEBHOOK_SECRET"]
+            ? {}
+            : { message: "SLICE_WEBHOOK_SECRET is missing" }),
+        }
+      : { status: "not_configured", message: "SLICE_API_KEY / SLICE_API_SECRET is missing" };
 
   checks.dhl =
     process.env["DHL_API_KEY"] && process.env["DHL_API_SECRET"] && process.env["DHL_ACCOUNT_NUMBER"]
       ? { status: "ok" }
-      : { status: "not_configured", message: "DHL_API_KEY / DHL_API_SECRET / DHL_ACCOUNT_NUMBER is missing" };
+      : {
+          status: "not_configured",
+          message: "DHL_API_KEY / DHL_API_SECRET / DHL_ACCOUNT_NUMBER is missing",
+        };
 
-  checks.delhivery = process.env["DELHIVERY_API_TOKEN"] && process.env["DELHIVERY_CLIENT_NAME"]
-    ? { status: "ok" }
-    : { status: "not_configured", message: "DELHIVERY_API_TOKEN / DELHIVERY_CLIENT_NAME is missing" };
+  checks.delhivery =
+    process.env["DELHIVERY_API_TOKEN"] && process.env["DELHIVERY_CLIENT_NAME"]
+      ? { status: "ok" }
+      : {
+          status: "not_configured",
+          message: "DELHIVERY_API_TOKEN / DELHIVERY_CLIENT_NAME is missing",
+        };
 
   checks.email = process.env["RESEND_API_KEY"]
     ? { status: "ok" }
@@ -623,7 +659,10 @@ export async function healthCheck(): Promise<HealthResult> {
 
 type Detail = SystemCheckDetail;
 
-const okDetail = (info?: Record<string, unknown>): Detail => ({ status: "ok", ...(info ? { info } : {}) });
+const okDetail = (info?: Record<string, unknown>): Detail => ({
+  status: "ok",
+  ...(info ? { info } : {}),
+});
 const errDetail = (message: string): Detail => ({ status: "error", message });
 
 async function safe(run: () => Promise<Detail>): Promise<Detail> {
@@ -647,7 +686,10 @@ async function checkRls(): Promise<Detail> {
   const url = process.env["SUPABASE_URL"];
   const anonKey = process.env["SUPABASE_ANON_KEY"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !anonKey) {
-    return { status: "not_configured", message: "Anonymous key is unavailable in this environment" };
+    return {
+      status: "not_configured",
+      message: "Anonymous key is unavailable in this environment",
+    };
   }
 
   const anonGet = async (path: string) =>
@@ -656,11 +698,15 @@ async function checkRls(): Promise<Detail> {
   const orders = await anonGet("orders?select=id&limit=1");
   const ordersBody = await orders.text();
   const leaked = orders.ok && ordersBody.trim() !== "[]";
-  if (leaked) return errDetail("Anonymous role can read orders — RLS is not protecting private data");
+  if (leaked)
+    return errDetail("Anonymous role can read orders — RLS is not protecting private data");
 
   const products = await anonGet("products?select=id&limit=1");
   if (!products.ok) {
-    return { status: "degraded", message: "Anonymous role cannot read the public product catalogue" };
+    return {
+      status: "degraded",
+      message: "Anonymous role cannot read the public product catalogue",
+    };
   }
   return okDetail({ private_tables_blocked: true, public_catalogue_readable: true });
 }
@@ -682,7 +728,9 @@ export async function systemCheck(): Promise<SystemCheckResult> {
     logs,
   ] = await Promise.all([
     safe(async () => {
-      const { error } = await supabaseAdmin.from("store_settings").select("id", { head: true, count: "exact" });
+      const { error } = await supabaseAdmin
+        .from("store_settings")
+        .select("id", { head: true, count: "exact" });
       if (error) throw new Error(error.message);
       return okDetail();
     }),
@@ -694,7 +742,9 @@ export async function systemCheck(): Promise<SystemCheckResult> {
     safe(async () => {
       const { data, error } = await supabaseAdmin.storage.getBucket("product-images");
       if (error || !data) throw new Error(error?.message ?? "Bucket product-images is missing");
-      const { error: listError } = await supabaseAdmin.storage.from("product-images").list("", { limit: 1 });
+      const { error: listError } = await supabaseAdmin.storage
+        .from("product-images")
+        .list("", { limit: 1 });
       if (listError) throw new Error(listError.message);
       return okDetail({ public: data.public });
     }),
@@ -703,7 +753,10 @@ export async function systemCheck(): Promise<SystemCheckResult> {
       if (error) throw new Error(error.message);
       const total = (data as { total?: number }).total ?? data.users.length;
       if (total === 0) {
-        return { status: "degraded", message: "No auth users exist yet — create the first admin account" };
+        return {
+          status: "degraded",
+          message: "No auth users exist yet — create the first admin account",
+        };
       }
       return okDetail({ users: total });
     }),
@@ -720,7 +773,11 @@ export async function systemCheck(): Promise<SystemCheckResult> {
     safe(async () => {
       const result = await listProducts(new URL("https://internal/api/v1/products?limit=1"));
       const store = await getPublicStore();
-      return okDetail({ catalogue_reachable: true, brand_name: store.brand_name, total_products: result.total });
+      return okDetail({
+        catalogue_reachable: true,
+        brand_name: store.brand_name,
+        total_products: result.total,
+      });
     }),
     safe(async () => {
       const total = await countOf("products");
@@ -744,7 +801,8 @@ export async function systemCheck(): Promise<SystemCheckResult> {
       if (error) throw new Error(error.message);
       const rows = data ?? [];
       const negative = rows.filter((r) => r.stock < 0);
-      if (negative.length) return errDetail(`Negative stock on: ${negative.map((r) => r.code).join(", ")}`);
+      if (negative.length)
+        return errDetail(`Negative stock on: ${negative.map((r) => r.code).join(", ")}`);
       const outOfStock = rows.filter((r) => r.stock === 0);
       if (rows.length && outOfStock.length === rows.length) {
         return { status: "degraded", message: "Every active product is out of stock" };
@@ -789,12 +847,18 @@ export async function systemCheck(): Promise<SystemCheckResult> {
   const dhl: Detail =
     process.env["DHL_API_KEY"] && process.env["DHL_API_SECRET"] && process.env["DHL_ACCOUNT_NUMBER"]
       ? okDetail()
-      : { status: "not_configured", message: "DHL_API_KEY / DHL_API_SECRET / DHL_ACCOUNT_NUMBER is missing" };
+      : {
+          status: "not_configured",
+          message: "DHL_API_KEY / DHL_API_SECRET / DHL_ACCOUNT_NUMBER is missing",
+        };
 
   const delhivery: Detail =
     process.env["DELHIVERY_API_TOKEN"] && process.env["DELHIVERY_CLIENT_NAME"]
       ? okDetail()
-      : { status: "not_configured", message: "DELHIVERY_API_TOKEN / DELHIVERY_CLIENT_NAME is missing" };
+      : {
+          status: "not_configured",
+          message: "DELHIVERY_API_TOKEN / DELHIVERY_CLIENT_NAME is missing",
+        };
 
   const email: Detail = process.env["RESEND_API_KEY"]
     ? process.env["EMAIL_FROM"]
@@ -828,7 +892,11 @@ export async function systemCheck(): Promise<SystemCheckResult> {
   for (const key of SYSTEM_CHECK_COMPONENTS) statuses[key] = details[key].status;
 
   const values = Object.values(statuses);
-  const status = values.includes("error") ? "error" : values.every((v) => v === "ok") ? "ok" : "degraded";
+  const status = values.includes("error")
+    ? "error"
+    : values.every((v) => v === "ok")
+      ? "ok"
+      : "degraded";
 
   return {
     ...statuses,
@@ -902,10 +970,12 @@ const bisSchema = z.object({
 
 export async function registerBackInStock(body: unknown) {
   const { email, product_id, variant_id } = parse(bisSchema, body);
-  const { error } = await db.from("back_in_stock_requests").upsert(
-    { email, product_id, variant_id: variant_id ?? null, is_active: true },
-    { onConflict: "email,product_id" }
-  );
+  const { error } = await db
+    .from("back_in_stock_requests")
+    .upsert(
+      { email, product_id, variant_id: variant_id ?? null, is_active: true },
+      { onConflict: "email,product_id" },
+    );
   if (error) throw new Error(error.message);
   return { registered: true };
 }
@@ -921,18 +991,32 @@ const wishlistSchema = z.object({
 
 export async function addToWishlist(body: unknown) {
   const { customer_email, product_id, variant_id, product_name } = parse(wishlistSchema, body);
-  const { error } = await db.from("wishlists").upsert(
-    { customer_email, product_id, variant_id: variant_id ?? null, product_name },
-    { onConflict: "customer_email,product_id" }
-  );
+  const { data, error } = await db
+    .from("wishlists")
+    .upsert(
+      { customer_email, product_id, variant_id: variant_id ?? null, product_name },
+      { onConflict: "customer_email,product_id" },
+    )
+    .select()
+    .single();
   if (error) throw new Error(error.message);
-  return { added: true };
+  return data;
 }
 
 export async function removeFromWishlist(id: string) {
   const { error } = await db.from("wishlists").delete().eq("id", id);
   if (error) throw new Error(error.message);
   return { removed: true };
+}
+
+/** The signed-in customer's own saved items — used to render heart state on the storefront. */
+export async function getWishlistForCustomer(customerEmail: string) {
+  const { data, error } = await db
+    .from("wishlists")
+    .select("*")
+    .eq("customer_email", customerEmail);
+  if (error) throw new Error(error.message);
+  return { items: data ?? [] };
 }
 
 /* ─── Announcements ─────────────────────────────────────────────────────── */
@@ -980,6 +1064,106 @@ export async function getFaqItems(url: URL) {
   return { faqs: data ?? [] };
 }
 
+/* ─── Homepage ──────────────────────────────────────────────────────────── */
+
+/**
+ * Backs the storefront's hero carousel, review-count and featured-products
+ * choices — all previously hardcoded in app.js regardless of what the
+ * already-real cms_homepage admin editor saved.
+ */
+export async function getPublicHomepage() {
+  const { data, error } = await db
+    .from("cms_homepage")
+    .select("hero_slides, featured_product_ids, homepage_reviews_count")
+    .eq("singleton", true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+
+  const featuredIds: string[] = data?.featured_product_ids ?? [];
+  let featured_products: unknown[] = [];
+  if (featuredIds.length) {
+    const { data: products } = await supabaseAdmin
+      .from("products")
+      .select(PRODUCT_COLUMNS)
+      .in("id", featuredIds)
+      .eq("is_published", true)
+      .is("deleted_at", null);
+    const byId = new Map((products ?? []).map((p) => [(p as { id: string }).id, p]));
+    // Preserve the admin's chosen order rather than the DB's.
+    featured_products = featuredIds
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((row) => toPublicProduct(row as unknown as ProductRow));
+  }
+
+  return {
+    hero_slides: data?.hero_slides ?? [],
+    reviews_count: data?.homepage_reviews_count ?? 8,
+    featured_products,
+  };
+}
+
+/* ─── Journal ───────────────────────────────────────────────────────────── */
+
+function readTimeFor(content: string): string {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / 200))} min read`;
+}
+
+const JOURNAL_LIST_COLUMNS =
+  "id, slug, title, excerpt, featured_image, author_name, category, tags, published_at, content";
+
+export async function getJournalList(url: URL) {
+  const category = url.searchParams.get("category");
+  let q = db
+    .from("journal_articles")
+    .select(JOURNAL_LIST_COLUMNS)
+    .eq("status", "published")
+    .order("published_at", { ascending: false });
+  if (category) q = q.eq("category", category);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  const articles = (data ?? []).map((a: { content: string } & Record<string, unknown>) => {
+    const { content, ...rest } = a;
+    return { ...rest, read_time: readTimeFor(content) };
+  });
+  return { articles };
+}
+
+export async function getJournalBySlug(slug: string) {
+  const { data, error } = await db
+    .from("journal_articles")
+    .select(
+      "id, slug, title, content, featured_image, video_url, author_name, category, tags, published_at, view_count",
+    )
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw notFound(`No journal article with slug "${slug}"`);
+
+  await db
+    .from("journal_articles")
+    .update({ view_count: (data.view_count ?? 0) + 1 })
+    .eq("id", data.id);
+
+  const { data: related } = await db
+    .from("journal_articles")
+    .select(JOURNAL_LIST_COLUMNS)
+    .eq("status", "published")
+    .neq("id", data.id)
+    .order("published_at", { ascending: false })
+    .limit(3);
+
+  return {
+    article: { ...data, read_time: readTimeFor(data.content) },
+    related: (related ?? []).map((a: { content: string } & Record<string, unknown>) => {
+      const { content, ...rest } = a;
+      return { ...rest, read_time: readTimeFor(content) };
+    }),
+  };
+}
+
 /* ─── Reviews ───────────────────────────────────────────────────────────── */
 
 export async function getReviews(url: URL) {
@@ -988,7 +1172,10 @@ export async function getReviews(url: URL) {
   const offset = Number(url.searchParams.get("offset") ?? 0);
   let q = db
     .from("reviews")
-    .select("id, product_id, customer_name, rating, title, body, is_verified_purchase, helpful_count, photos, created_at")
+    .select(
+      "id, product_id, customer_name, rating, title, body, is_verified_purchase, helpful_count, photos, created_at, products(name, slug, card_image)",
+      { count: "exact" },
+    )
     .in("status", ["approved", "featured"])
     .order("helpful_count", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -996,6 +1183,46 @@ export async function getReviews(url: URL) {
   const { data, error, count } = await q;
   if (error) throw new Error(error.message);
   return { reviews: data ?? [], total: count ?? 0 };
+}
+
+/**
+ * Powers the storefront's rating summary blocks (homepage stats, PDP header).
+ * Without `product_id` it's site-wide and also reports a "happy customers"
+ * count (distinct customers with a paid order) for the homepage trust strip.
+ */
+export async function getReviewStats(url: URL) {
+  const productId = url.searchParams.get("product_id");
+  let q = db.from("reviews").select("rating, photos").in("status", ["approved", "featured"]);
+  if (productId) q = q.eq("product_id", productId);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as { rating: number; photos: string[] | null }[];
+  const count = rows.length;
+  const average = count ? rows.reduce((s, r) => s + r.rating, 0) / count : 0;
+  const photosCount = rows.reduce((s, r) => s + (r.photos?.length ?? 0), 0);
+  const distribution = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: rows.filter((r) => r.rating === star).length,
+  }));
+
+  const result: Record<string, unknown> = {
+    average: Math.round(average * 10) / 10,
+    count,
+    photos_count: photosCount,
+    distribution,
+  };
+
+  if (!productId) {
+    const { data: paidOrders } = await supabaseAdmin
+      .from("orders")
+      .select("customer_email")
+      .eq("payment_status", "paid")
+      .is("deleted_at", null);
+    result["happy_customers_count"] = new Set((paidOrders ?? []).map((o) => o.customer_email)).size;
+  }
+
+  return result;
 }
 
 const reviewSchema = z.object({
@@ -1006,10 +1233,20 @@ const reviewSchema = z.object({
   title: z.string().optional(),
   body: z.string().min(10),
   order_id: z.string().uuid().optional(),
+  photos: z.array(z.string().url()).max(5).optional(),
 });
 
 export async function submitReview(body: unknown) {
-  const { product_id, customer_name, customer_email, rating, title, body: reviewBody, order_id } = parse(reviewSchema, body);
+  const {
+    product_id,
+    customer_name,
+    customer_email,
+    rating,
+    title,
+    body: reviewBody,
+    order_id,
+    photos,
+  } = parse(reviewSchema, body);
   let isVerified = false;
   if (order_id) {
     const { data } = await supabaseAdmin
@@ -1032,12 +1269,43 @@ export async function submitReview(body: unknown) {
       body: reviewBody,
       order_id: order_id ?? null,
       is_verified_purchase: isVerified,
+      photos: photos ?? [],
       status: "pending",
     })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
   return { id: data.id, status: "pending", message: "Review submitted and awaiting approval" };
+}
+
+const MAX_REVIEW_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_REVIEW_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+/** Stores a customer-submitted review photo in the public product-images
+ * bucket (under reviews/) and returns its public URL. Runs server-side with
+ * the service role so anon customers never need direct storage write access. */
+export async function uploadReviewPhoto(request: Request) {
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) throw badRequest("No file provided");
+  if (!ALLOWED_REVIEW_PHOTO_TYPES.has(file.type)) {
+    throw badRequest("Only JPEG, PNG, WEBP or GIF images are allowed");
+  }
+  if (file.size > MAX_REVIEW_PHOTO_BYTES) {
+    throw badRequest("Image must be 5MB or smaller");
+  }
+
+  const ext = file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1];
+  const path = `reviews/${crypto.randomUUID()}.${ext}`;
+  const bytes = await file.arrayBuffer();
+
+  const { error } = await supabaseAdmin.storage
+    .from("product-images")
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message);
+
+  const base = process.env["SUPABASE_URL"];
+  return { url: `${base}/storage/v1/object/public/product-images/${path}` };
 }
 
 /* ─── Redirects ─────────────────────────────────────────────────────────── */
@@ -1053,9 +1321,14 @@ export async function resolveRedirect(url: URL) {
     .single();
   if (error && error.code !== "PGRST116") throw new Error(error.message);
   if (data) {
-    db.from("redirects").update({ hit_count: data.hit_count + 1 }).eq("from_path", path).then(() => {});
+    db.from("redirects")
+      .update({ hit_count: data.hit_count + 1 })
+      .eq("from_path", path)
+      .then(() => {});
   }
-  return { redirect: data ? { from_path: data.from_path, to_path: data.to_path, type: data.type } : null };
+  return {
+    redirect: data ? { from_path: data.from_path, to_path: data.to_path, type: data.type } : null,
+  };
 }
 
 /* ─── Product Drops ─────────────────────────────────────────────────────── */
@@ -1063,7 +1336,9 @@ export async function resolveRedirect(url: URL) {
 export async function getActiveDrops() {
   const { data, error } = await db
     .from("product_drops")
-    .select("id, name, description, status, launch_at, end_at, purchase_limit_per_customer, is_early_access_only, products")
+    .select(
+      "id, name, description, status, launch_at, end_at, purchase_limit_per_customer, is_early_access_only, products",
+    )
     .eq("status", "active")
     .order("launch_at");
   if (error) throw new Error(error.message);
@@ -1071,11 +1346,7 @@ export async function getActiveDrops() {
 }
 
 export async function getDrop(id: string) {
-  const { data, error } = await db
-    .from("product_drops")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const { data, error } = await db.from("product_drops").select("*").eq("id", id).single();
   if (error) {
     if (error.code === "PGRST116") throw notFound(`Drop ${id} not found`);
     throw new Error(error.message);
@@ -1095,10 +1366,14 @@ const earlyAccessSchema = z.object({
 export async function joinEarlyAccess(body: unknown) {
   const { email, drop_id, product_id, source } = parse(earlyAccessSchema, body);
   const { error } = await db.from("early_access_list").upsert(
-    { email, drop_id: drop_id ?? null, product_id: product_id ?? null, source: source ?? "website" },
-    { onConflict: "email,drop_id" }
+    {
+      email,
+      drop_id: drop_id ?? null,
+      product_id: product_id ?? null,
+      source: source ?? "website",
+    },
+    { onConflict: "email,drop_id" },
   );
   if (error) throw new Error(error.message);
   return { registered: true };
 }
-

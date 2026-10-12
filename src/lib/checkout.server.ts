@@ -6,14 +6,17 @@
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Database } from "@/integrations/supabase/types";
 import { LOG_EVENTS, logEvent } from "./logger.server";
+import { createCheckoutSession, stripeRequest, type StripeEvent } from "./stripe.server";
 import {
-  createCheckoutSession,
-  stripeRequest,
-  type StripeEvent,
-} from "./stripe.server";
-import { createOrder as createRazorpayOrder, refundPayment as refundRazorpayPayment } from "./razorpay.server";
-import { createOrder as createSliceOrder, refundPayment as refundSlicePayment } from "./slice.server";
+  createOrder as createRazorpayOrder,
+  refundPayment as refundRazorpayPayment,
+} from "./razorpay.server";
+import {
+  createOrder as createSliceOrder,
+  refundPayment as refundSlicePayment,
+} from "./slice.server";
 import type { RazorpayEvent } from "./razorpay.server";
 import type { SliceEvent } from "./slice.server";
 import {
@@ -53,6 +56,10 @@ export const orderInputSchema = z.object({
   discount_code: z.string().trim().max(40).optional(),
   newsletter_opt_in: z.boolean().optional(),
   gdpr_consent_text: z.string().trim().max(500).optional(),
+  utm_source: z.string().trim().max(100).optional(),
+  utm_medium: z.string().trim().max(100).optional(),
+  utm_campaign: z.string().trim().max(100).optional(),
+  utm_content: z.string().trim().max(100).optional(),
 });
 
 export const checkoutSchema = orderInputSchema.extend({
@@ -148,10 +155,55 @@ export async function priceCart(input: OrderInput) {
     }
   }
 
+  // Auto-apply the best eligible active Promotion (admin-run site-wide/
+  // category offers, distinct from a customer-entered discount code).
+  // A promotion and a manual code don't stack — whichever discounts more
+  // wins — but free shipping is a separate benefit and always applies when
+  // eligible. "buy_x_get_y" promotions are excluded from auto-apply (needs
+  // per-line-item matching this pricing pass doesn't attempt) but still
+  // show up via the public active-promotions endpoint for display.
+  const now = new Date();
+  const { data: activePromotions } = await supabaseAdmin
+    .from("promotions")
+    .select("*")
+    .eq("status", "active");
+  const productIds = new Set(lines.map((l) => l.product_id));
+  // category_ids is typed uuid[], but products.category is a plain enum
+  // (no separate categories table exists in this schema) — there is no
+  // meaningful way to match the two, so category-scoped promotions are not
+  // auto-applied. Only "all" and explicit "products" scoping are supported.
+  const eligible = (activePromotions ?? []).filter((p) => {
+    if (p.start_at && new Date(p.start_at) > now) return false;
+    if (p.end_at && new Date(p.end_at) < now) return false;
+    if (p.min_order != null && subtotal < Number(p.min_order)) return false;
+    if (p.applies_to === "all") return true;
+    if (p.applies_to === "products") return (p.product_ids ?? []).some((id) => productIds.has(id));
+    return false;
+  });
+
+  let promotion_id: string | null = null;
+  const monetary = eligible.filter((p) => p.type === "percent" || p.type === "fixed");
+  const bestMonetary = monetary.reduce<{ id: string; amount: number } | null>((best, p) => {
+    const amount =
+      p.type === "percent"
+        ? round((subtotal * Number(p.value ?? 0)) / 100)
+        : Math.min(round(Number(p.value ?? 0)), subtotal);
+    return !best || amount > best.amount ? { id: p.id, amount } : best;
+  }, null);
+  if (bestMonetary && bestMonetary.amount > discount_amount) {
+    discount_amount = bestMonetary.amount;
+    discount_code = null;
+    promotion_id = bestMonetary.id;
+  }
+  const freeShippingPromotion = eligible.find((p) => p.type === "free_shipping");
+  if (freeShippingPromotion && !promotion_id) promotion_id = freeShippingPromotion.id;
+
   const netAfterDiscount = round(subtotal - discount_amount);
   const threshold = settings.free_shipping_threshold;
   const shipping_cost =
-    threshold != null && netAfterDiscount >= Number(threshold) ? 0 : Number(settings.shipping_cost);
+    freeShippingPromotion || (threshold != null && netAfterDiscount >= Number(threshold))
+      ? 0
+      : Number(settings.shipping_cost);
 
   const total = round(netAfterDiscount + shipping_cost);
   // Prices are gross (VAT included), as required for EU consumer pricing.
@@ -165,6 +217,7 @@ export async function priceCart(input: OrderInput) {
     subtotal,
     discount_amount,
     discount_code,
+    promotion_id,
     shipping_cost,
     vat_rate,
     vat_amount,
@@ -176,9 +229,14 @@ export async function priceCart(input: OrderInput) {
 export async function createOrderRecord(
   input: OrderInput,
   priced: Awaited<ReturnType<typeof priceCart>>,
-  paymentMethod: PaymentProvider = "stripe",
+  // "manual" is used by the plain POST /api/v1/orders endpoint (createOrder
+  // in handlers.server.ts), which creates a pending order with no payment
+  // session at all — distinct from the three real gateways, and never
+  // reaches fulfilOrder/PAYMENT_REFERENCE_COLUMN since it has no checkout.
+  paymentMethod: PaymentProvider | "manual" = "stripe",
 ) {
-  const customer_name = `${input.shipping_address.first_name} ${input.shipping_address.last_name}`.trim();
+  const customer_name =
+    `${input.shipping_address.first_name} ${input.shipping_address.last_name}`.trim();
   const now = new Date().toISOString();
 
   // Upsert customer record
@@ -215,9 +273,14 @@ export async function createOrderRecord(
       subtotal: priced.subtotal,
       discount_amount: priced.discount_amount,
       discount_code: priced.discount_code,
+      promotion_id: priced.promotion_id,
+      utm_source: input.utm_source ?? null,
+      utm_medium: input.utm_medium ?? null,
+      utm_campaign: input.utm_campaign ?? null,
+      utm_content: input.utm_content ?? null,
       shipping_cost: priced.shipping_cost,
       // orders.vat_rate is numeric(5,4) — stored as a fraction (0.19), not 19.
-      vat_rate: round(priced.vat_rate / 100 * 10000) / 10000,
+      vat_rate: round((priced.vat_rate / 100) * 10000) / 10000,
       vat_amount: priced.vat_amount,
       total: priced.total,
       currency: "EUR",
@@ -322,10 +385,7 @@ export async function startCheckout(input: CheckoutInput) {
     })),
   });
 
-  await supabaseAdmin
-    .from("orders")
-    .update({ stripe_session_id: session.id })
-    .eq("id", order.id);
+  await supabaseAdmin.from("orders").update({ stripe_session_id: session.id }).eq("id", order.id);
 
   return { ...totals, checkout_url: session.url };
 }
@@ -352,13 +412,15 @@ export async function fulfilOrder(
   if (!order) throw new Error(`Order ${orderId} not found`);
   if (order.payment_status === "paid") return { alreadyProcessed: true };
 
+  // Built as two steps rather than one object literal with a computed key:
+  // TS treats a union-typed computed key in an object literal as a generic
+  // index signature rather than expanding it per-key, which conflicts with
+  // exactOptionalPropertyTypes on the generated Update type.
+  const patch: Record<string, unknown> = { payment_status: "paid", status: "confirmed" };
+  patch[PAYMENT_REFERENCE_COLUMN[provider]] = paymentReferenceId;
   await supabaseAdmin
     .from("orders")
-    .update({
-      payment_status: "paid",
-      status: "confirmed",
-      [PAYMENT_REFERENCE_COLUMN[provider]]: paymentReferenceId,
-    })
+    .update(patch as Database["public"]["Tables"]["orders"]["Update"])
     .eq("id", order.id);
 
   for (const item of order.order_items) {
@@ -387,6 +449,20 @@ export async function fulfilOrder(
         .from("discount_codes")
         .update({ uses_so_far: code.uses_so_far + 1 })
         .eq("id", code.id);
+    }
+  }
+
+  if (order.promotion_id) {
+    const { data: promotion } = await supabaseAdmin
+      .from("promotions")
+      .select("id, usage_count")
+      .eq("id", order.promotion_id)
+      .maybeSingle();
+    if (promotion) {
+      await supabaseAdmin
+        .from("promotions")
+        .update({ usage_count: promotion.usage_count + 1 })
+        .eq("id", promotion.id);
     }
   }
 
@@ -427,11 +503,18 @@ export async function markPaymentFailed(orderId: string) {
   });
   await supabaseAdmin
     .from("orders")
-    .update({ payment_status: "failed", status: "cancelled", cancelled_at: new Date().toISOString() })
+    .update({
+      payment_status: "failed",
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+    })
     .eq("id", orderId);
 }
 
-export async function markRefunded(paymentReferenceId: string, provider: PaymentProvider = "stripe") {
+export async function markRefunded(
+  paymentReferenceId: string,
+  provider: PaymentProvider = "stripe",
+) {
   await logEvent(LOG_EVENTS.refund, {
     message: `${provider} reported a refund`,
     context: { provider, payment_reference_id: paymentReferenceId },

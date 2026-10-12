@@ -198,41 +198,35 @@ export async function getWishlistByProduct(): Promise<{ product_id: string; prod
 // ─── Abandoned Carts ──────────────────────────────────────────────────────────
 
 export async function getAbandonedCarts(start?: string, end?: string): Promise<AbandonedCart[]> {
-  // Find sessions that had checkout_started but NOT checkout_completed
+  // Abandonment is computed live by the cart_session_status view (last event
+  // was a cart/checkout action, no checkout_completed ever followed, and
+  // enough time has passed) — nothing inserts a literal "abandoned" event.
   let q = supabase
-    .from("cart_events")
-    .select("session_id, customer_email, cart_total, cart_items, created_at, checkout_stage, utm_source")
-    .eq("event_type", "checkout_abandoned")
-    .order("created_at", { ascending: false });
-  if (start) q = q.gte("created_at", start);
-  if (end) q = q.lte("created_at", end);
+    .from("cart_session_status")
+    .select("session_id, customer_email, cart_total, cart_items, last_activity, checkout_stage, utm_source")
+    .eq("is_abandoned", true)
+    .order("last_activity", { ascending: false });
+  if (start) q = q.gte("last_activity", start);
+  if (end) q = q.lte("last_activity", end);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r: any) => ({
-    session_id: r.session_id,
-    customer_email: r.customer_email,
-    cart_total: r.cart_total,
-    cart_items: r.cart_items,
-    last_activity: r.created_at,
-    checkout_stage: r.checkout_stage,
-    utm_source: r.utm_source,
-  }));
+  return (data ?? []) as AbandonedCart[];
 }
 
 export async function getAbandonedCartStats(start: string, end: string) {
   const [abandoned, recovered] = await Promise.all([
     supabase
-      .from("cart_events")
+      .from("cart_session_status")
       .select("cart_total")
-      .eq("event_type", "checkout_abandoned")
-      .gte("created_at", start)
-      .lte("created_at", end),
+      .eq("is_abandoned", true)
+      .gte("last_activity", start)
+      .lte("last_activity", end),
     supabase
-      .from("cart_events")
+      .from("cart_session_status")
       .select("cart_total")
-      .eq("event_type", "checkout_completed")
-      .gte("created_at", start)
-      .lte("created_at", end),
+      .eq("is_completed", true)
+      .gte("completed_at", start)
+      .lte("completed_at", end),
   ]);
 
   const abandonedCarts = abandoned.data ?? [];

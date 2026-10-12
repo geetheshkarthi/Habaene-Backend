@@ -2,23 +2,16 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  getProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  setProductActive,
-  type ProductFilters,
-} from "@/lib/api/products";
-import { PRODUCT_CATEGORIES, LOW_STOCK_THRESHOLD, type Product } from "@/lib/api/types";
-import { money, slugify, num } from "@/lib/format";
+import { getProducts, updateProduct, deleteProduct, type ProductFilters } from "@/lib/api/products";
+import { PRODUCT_CATEGORIES, type Product } from "@/lib/api/types";
+import { money, num } from "@/lib/format";
+import { imageUrl } from "@/lib/config";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -26,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,30 +40,19 @@ export const Route = createFileRoute("/_authenticated/admin/products")({
   head: () => ({
     meta: [
       { title: "Products — HABÄNE Admin" },
-      { name: "description", content: "Manage the HABÄNE catalogue, pricing and stock levels." },
+      {
+        name: "description",
+        content: "Set pricing, display priority and storefront visibility for catalogue items.",
+      },
       { property: "og:title", content: "Products — HABÄNE Admin" },
       {
         property: "og:description",
-        content: "Manage the HABÄNE catalogue, pricing and stock levels.",
+        content: "Set pricing, display priority and storefront visibility for catalogue items.",
       },
     ],
   }),
   component: ProductsPage,
 });
-
-const EMPTY = {
-  name: "",
-  code: "",
-  slug: "",
-  category: "system" as Product["category"],
-  price: 0,
-  stock: 0,
-  subtitle: "",
-  description: "",
-  badge: "",
-  weight_kg: 0,
-  is_active: true,
-};
 
 function ProductsPage() {
   const qc = useQueryClient();
@@ -81,82 +64,107 @@ function ProductsPage() {
     stock: "all",
   });
   const [editing, setEditing] = useState<Product | null>(null);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ ...EMPTY });
+  const [price, setPrice] = useState(0);
+  const [position, setPosition] = useState(0);
 
+  // Products only ever shows items Inventory has pushed (is_active = true).
   const products = useQuery({
     queryKey: ["products", filters],
-    queryFn: () => getProducts(filters),
+    queryFn: () => getProducts({ ...filters, activeOnly: true }),
   });
 
+  // Unfiltered pass for stable summary cards, same pattern as Inventory.
+  const allPushed = useQuery({
+    queryKey: ["products", "all-pushed"],
+    queryFn: () => getProducts({ activeOnly: true }),
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["products"] });
+
   const save = useMutation({
-    mutationFn: async () => {
-      const payload = {
-        ...form,
-        slug: form.slug.trim() || slugify(form.name),
-        price: num(form.price),
-        stock: Math.trunc(num(form.stock)),
-        weight_kg: num(form.weight_kg),
-        badge: form.badge.trim() || null,
-      };
-      if (editing) return updateProduct(editing.id, payload);
-      return createProduct(payload);
-    },
+    mutationFn: () =>
+      updateProduct(editing!.id, { price: num(price), position: Math.trunc(num(position)) }),
     onSuccess: () => {
-      toast.success(editing ? "Product updated" : "Product created");
-      setOpen(false);
-      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Product updated");
+      setEditing(null);
+      invalidate();
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // This is the website-visibility toggle — distinct from Inventory's "Push
+  // to Products" (is_active). Conflating the two in one column previously
+  // meant toggling Hide/Show here could un-push the item from Inventory's
+  // perspective too, which looked like "click one button, a different one
+  // reacts".
+  const publish = useMutation({
+    mutationFn: ({ id, published }: { id: string; published: boolean }) =>
+      updateProduct(id, { is_published: published }),
+    onSuccess: invalidate,
     onError: (e: Error) => toast.error(e.message),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
-      toast.success("Product archived");
-      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Product removed");
+      invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const toggle = useMutation({
-    mutationFn: ({ id, active }: { id: string; active: boolean }) => setProductActive(id, active),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  function openCreate() {
-    setEditing(null);
-    setForm({ ...EMPTY });
-    setOpen(true);
-  }
-
   function openEdit(p: Product) {
     setEditing(p);
-    setForm({
-      name: p.name,
-      code: p.code ?? "",
-      slug: p.slug,
-      category: p.category,
-      price: num(p.price),
-      stock: p.stock,
-      subtitle: p.subtitle ?? "",
-      description: p.description ?? "",
-      badge: p.badge ?? "",
-      weight_kg: num(p.weight_kg),
-      is_active: p.is_active,
-    });
-    setOpen(true);
+    setPrice(num(p.price));
+    setPosition(p.position ?? 0);
   }
+
+  const items = allPushed.data ?? [];
+  const totalValuation = items.reduce((s, p) => s + num(p.price) * p.stock, 0);
+  const totalProducts = items.length;
+  const totalLive = items.filter((p) => p.is_published).length;
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Catalogue"
         title="Products"
-        description="Prices are gross, VAT included. Deleting archives a product so past orders stay intact."
-        actions={<Button onClick={openCreate}>New product</Button>}
+        description="What's pushed from Inventory — set a price and priority, then choose what goes live on the storefront."
       />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">
+              Total Product Valuation
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{money(totalValuation)}</p>
+            <p className="text-xs text-muted-foreground">Retail value (stock × sell price)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">
+              Total Products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{totalProducts}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">
+              Total Products Live
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold text-success">{totalLive}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <Input
@@ -204,174 +212,115 @@ function ProductsPage() {
       ) : products.error ? (
         <ErrorState error={products.error} onRetry={() => products.refetch()} />
       ) : products.data!.length === 0 ? (
-        <EmptyState title="No products" description="Create your first catalogue entry." />
+        <EmptyState
+          title="No products"
+          description="Push items from Inventory first — they'll show up here."
+        />
       ) : (
         <div className="rounded-lg border border-border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Item</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Priority</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.data!.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    <p>{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.code || p.slug}</p>
-                  </TableCell>
-                  <TableCell className="capitalize">{p.category}</TableCell>
-                  <TableCell className="text-right">{money(p.price)}</TableCell>
-                  <TableCell
-                    className={
-                      p.stock === 0
-                        ? "text-right text-destructive"
-                        : p.stock < LOW_STOCK_THRESHOLD
-                          ? "text-right text-warning-foreground"
-                          : "text-right"
-                    }
-                  >
-                    {p.stock}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge value={p.is_active ? "active" : "inactive"} />
-                  </TableCell>
-                  <TableCell className="space-x-1 text-right whitespace-nowrap">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => toggle.mutate({ id: p.id, active: !p.is_active })}
-                    >
-                      {p.is_active ? "Hide" : "Show"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => remove.mutate(p.id)}
-                    >
-                      Archive
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {products.data!.map((p) => {
+                const publishPending = publish.isPending && publish.variables?.id === p.id;
+                const removePending = remove.isPending && remove.variables === p.id;
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {p.card_image && (
+                          <img
+                            src={imageUrl(p.card_image) ?? undefined}
+                            alt=""
+                            className="h-10 w-10 rounded-md object-cover"
+                          />
+                        )}
+                        <div>
+                          <p>{p.name}</p>
+                          <p className="text-xs text-muted-foreground">{p.code || p.slug}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize">{p.category}</TableCell>
+                    <TableCell className="text-right">{money(p.price)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {p.position ?? 0}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge value={p.is_published ? "active" : "inactive"} />
+                    </TableCell>
+                    <TableCell className="space-x-1 text-right whitespace-nowrap">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
+                        Price &amp; priority
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={publishPending}
+                        onClick={() => publish.mutate({ id: p.id, published: !p.is_published })}
+                      >
+                        {publishPending
+                          ? "Saving…"
+                          : p.is_published
+                            ? "Hide from Website"
+                            : "Show on Website"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        disabled={removePending}
+                        onClick={() => remove.mutate(p.id)}
+                      >
+                        {removePending ? "Removing…" : "Remove"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
+            <DialogTitle>{editing?.name}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Name</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
+          <div className="space-y-3">
             <div className="space-y-2">
-              <Label>Code</Label>
-              <Input
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Slug</Label>
-              <Input
-                placeholder={slugify(form.name)}
-                value={form.slug}
-                onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, category: v as Product["category"] }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCT_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Price (€)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Stock</Label>
-                <Input
-                  type="number"
-                  value={form.stock}
-                  onChange={(e) => setForm((f) => ({ ...f, stock: Number(e.target.value) }))}
-                />
-              </div>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Subtitle</Label>
-              <Input
-                value={form.subtitle}
-                onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Description</Label>
-              <Textarea
-                rows={4}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Badge</Label>
-              <Input
-                value={form.badge}
-                onChange={(e) => setForm((f) => ({ ...f, badge: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Weight (kg)</Label>
+              <Label>Sell price (€)</Label>
               <Input
                 type="number"
                 step="0.01"
-                value={form.weight_kg}
-                onChange={(e) => setForm((f) => ({ ...f, weight_kg: Number(e.target.value) }))}
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Display priority (lower shows first)</Label>
+              <Input
+                type="number"
+                value={position}
+                onChange={(e) => setPosition(Number(e.target.value))}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setEditing(null)}>
               Cancel
             </Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending || !form.name.trim()}>
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
               {save.isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
