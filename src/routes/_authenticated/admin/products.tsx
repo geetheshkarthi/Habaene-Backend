@@ -2,7 +2,13 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getProducts, updateProduct, deleteProduct, type ProductFilters } from "@/lib/api/products";
+import {
+  getProducts,
+  updateProduct,
+  deleteProduct,
+  findPriorityClash,
+  type ProductFilters,
+} from "@/lib/api/products";
 import { PRODUCT_CATEGORIES, type Product } from "@/lib/api/types";
 import { money, num } from "@/lib/format";
 import { imageUrl } from "@/lib/config";
@@ -82,8 +88,15 @@ function ProductsPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["products"] });
 
   const save = useMutation({
-    mutationFn: () =>
-      updateProduct(editing!.id, { price: num(price), position: Math.trunc(num(position)) }),
+    mutationFn: async () => {
+      const pos = Math.trunc(num(position));
+      if (pos < 0) throw new Error("Priority can't be negative (use 0 for no priority).");
+      const clash = await findPriorityClash(pos, editing!.id);
+      if (clash) {
+        throw new Error(`Priority ${pos} is already used by "${clash.name}". Pick a different number.`);
+      }
+      return updateProduct(editing!.id, { price: num(price), position: pos });
+    },
     onSuccess: () => {
       toast.success("Product updated");
       setEditing(null);
@@ -253,7 +266,7 @@ function ProductsPage() {
                     <TableCell className="capitalize">{p.category}</TableCell>
                     <TableCell className="text-right">{money(p.price)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {p.position ?? 0}
+                      {p.position ? p.position : "—"}
                     </TableCell>
                     <TableCell>
                       <StatusBadge value={p.is_published ? "active" : "inactive"} />
@@ -314,9 +327,11 @@ function ProductsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Display priority (lower shows first)</Label>
+              <Label>Display priority (1 shows first, must be unique; 0 = none, shown last)</Label>
               <Input
                 type="number"
+                min={0}
+                step={1}
                 value={position}
                 onChange={(e) => setPosition(Number(e.target.value))}
               />

@@ -84,12 +84,10 @@ export async function listProducts(url: URL): Promise<ProductListResult> {
 
   let query = supabaseAdmin
     .from("products")
-    .select(PRODUCT_COLUMNS, { count: "exact" })
+    .select(PRODUCT_COLUMNS)
     .eq("is_published", true)
     .is("deleted_at", null)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .order("created_at", { ascending: false });
 
   if (category && category !== "all") {
     if (!["system", "carry", "luggage"].includes(category)) {
@@ -103,12 +101,22 @@ export async function listProducts(url: URL): Promise<ProductListResult> {
   }
   if (inStock === "true") query = query.gt("stock", 0);
 
-  const { data, error, count } = await query;
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
 
+  // Priority 1, 2, 3… first; unranked (0) last. Sorted here (not in SQL) so
+  // unranked products don't jump ahead; the catalogue is small enough to page
+  // in memory.
+  const rows = (data ?? []) as unknown as Array<ProductRow & { position: number }>;
+  rows.sort((a, b) => {
+    const pa = a.position > 0 ? a.position : Infinity;
+    const pb = b.position > 0 ? b.position : Infinity;
+    return pa === pb ? 0 : pa < pb ? -1 : 1;
+  });
+
   return {
-    items: (data ?? []).map((row) => toPublicProduct(row as unknown as ProductRow)),
-    total: count ?? 0,
+    items: rows.slice(offset, offset + limit).map((row) => toPublicProduct(row)),
+    total: rows.length,
     limit,
     offset,
   };

@@ -9,13 +9,26 @@ export interface ProductFilters {
   includeDeleted?: boolean;
 }
 
+/**
+ * Display order: priority 1, 2, 3… first; products with no priority (0) last,
+ * newest first. A plain `ORDER BY position` would put every unranked product
+ * (position 0) ahead of the ranked ones.
+ */
+export function compareByPriority(
+  a: { position: number | null; created_at: string },
+  b: { position: number | null; created_at: string },
+): number {
+  const pa = a.position && a.position > 0 ? a.position : Infinity;
+  const pb = b.position && b.position > 0 ? b.position : Infinity;
+  if (pa !== pb) return pa < pb ? -1 : 1;
+  return b.created_at.localeCompare(a.created_at);
+}
+
 /** Admin-facing product list (RLS grants full read to admins). */
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
   let query = supabase
     .from("products")
-    .select("*")
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: false });
+    .select("*");
 
   if (!filters.includeDeleted) query = query.is("deleted_at", null);
   if (filters.activeOnly) query = query.eq("is_active", true);
@@ -30,7 +43,24 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   if (filters.stock === "low") query = query.gt("stock", 0).lt("stock", 5);
   if (filters.stock === "in") query = query.gte("stock", 5);
 
-  return unwrap(await query);
+  return unwrap(await query).sort(compareByPriority);
+}
+
+/** Another live product already using this priority (0 = unset, never a clash). */
+export async function findPriorityClash(
+  position: number,
+  excludeId: string,
+): Promise<Pick<Product, "id" | "name"> | null> {
+  if (position <= 0) return null;
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name")
+    .eq("position", position)
+    .is("deleted_at", null)
+    .neq("id", excludeId)
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] ?? null;
 }
 
 export async function getProduct(id: string): Promise<Product> {
