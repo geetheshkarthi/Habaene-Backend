@@ -259,12 +259,18 @@ function ProductsPage() {
                       <StatusBadge value={p.is_published ? "active" : "inactive"} />
                     </TableCell>
                     <TableCell className="space-x-1 text-right whitespace-nowrap">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-36 justify-center"
+                        onClick={() => openEdit(p)}
+                      >
                         Price &amp; priority
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="w-40 justify-center"
                         disabled={publishPending}
                         onClick={() => publish.mutate({ id: p.id, published: !p.is_published })}
                       >
@@ -277,7 +283,7 @@ function ProductsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-destructive"
+                        className="w-24 justify-center text-destructive"
                         disabled={removePending}
                         onClick={() => remove.mutate(p.id)}
                       >

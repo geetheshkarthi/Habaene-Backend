@@ -567,15 +567,26 @@ function InventoryPage() {
                           <p className="text-muted-foreground">Value: {money(r.inventory_value)}</p>
                         </TableCell>
                         <TableCell className="space-x-1 text-right whitespace-nowrap">
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(r.id)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="w-16 justify-center"
+                            onClick={() => openEdit(r.id)}
+                          >
                             Edit
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => openAdjust(r)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-28 justify-center"
+                            onClick={() => openAdjust(r)}
+                          >
                             Update Stock
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
+                            className="w-36 justify-center"
                             disabled={togglePush.isPending && togglePush.variables?.id === r.id}
                             onClick={() => togglePush.mutate({ id: r.id, active: !r.is_active })}
                           >
@@ -584,7 +595,7 @@ function InventoryPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-destructive"
+                            className="w-24 justify-center text-destructive"
                             disabled={archive.isPending && archive.variables === r.id}
                             onClick={() => archive.mutate(r.id)}
                           >
