@@ -75,11 +75,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Megaphone,
     items: [
       { to: "/admin/discounts", label: "Coupons" },
-      { to: "/admin/promotions", label: "Promotions" },
-      { to: "/admin/campaigns", label: "Campaigns" },
       { to: "/admin/newsletter", label: "Subscribers" },
-      { to: "/admin/early-access", label: "Early Access" },
-      { to: "/admin/back-in-stock", label: "Back in Stock" },
     ],
   },
   {
