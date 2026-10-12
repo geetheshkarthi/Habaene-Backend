@@ -7,14 +7,12 @@ import {
   Undo2,
   Mail,
   Ticket,
-  Settings,
   LogOut,
   BarChart3,
   Warehouse,
   Megaphone,
   FileText,
   Search,
-  Shield,
   MessageSquare,
   Tag,
   ChevronDown,
@@ -94,18 +92,6 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/admin/seo", label: "SEO Dashboard" },
       { to: "/admin/seo/redirects", label: "Redirects" },
       { to: "/admin/seo/search-analytics", label: "Search Analytics" },
-    ],
-  },
-  {
-    label: "Administration",
-    icon: Shield,
-    items: [
-      { to: "/admin/team", label: "Team" },
-      { to: "/admin/audit-log", label: "Audit Log" },
-      { to: "/admin/email-templates", label: "Email Templates" },
-      { to: "/admin/notifications", label: "Notifications" },
-      { to: "/admin/webhooks", label: "Webhooks" },
-      { to: "/admin/settings", label: "Settings" },
     ],
   },
   {
@@ -245,12 +231,6 @@ function AdminLayout() {
             className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
           >
             Customers
-          </Link>
-          <Link
-            to="/admin/settings"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
-          >
-            Settings
           </Link>
         </nav>
         <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-10">
