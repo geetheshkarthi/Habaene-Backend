@@ -51,9 +51,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/products", label: "Products" },
       { to: "/admin/inventory", label: "Inventory" },
-      { to: "/admin/warehouses", label: "Warehouses" },
-      { to: "/admin/purchase-orders", label: "Purchase Orders" },
-      { to: "/admin/product-drops", label: "Product Drops" },
     ],
   },
   {
