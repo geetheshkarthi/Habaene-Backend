@@ -1222,12 +1222,17 @@ export async function getReviewStats(url: URL) {
   };
 
   if (!productId) {
-    const { data: paidOrders } = await supabaseAdmin
+    // Same definition as Analytics: any real (non-cancelled, non-deleted)
+    // order counts — not only 'paid', which no order can reach until a payment
+    // gateway is wired up.
+    const { data: placedOrders } = await supabaseAdmin
       .from("orders")
       .select("customer_email")
-      .eq("payment_status", "paid")
+      .neq("status", "cancelled")
       .is("deleted_at", null);
-    result["happy_customers_count"] = new Set((paidOrders ?? []).map((o) => o.customer_email)).size;
+    result["happy_customers_count"] = new Set(
+      (placedOrders ?? []).map((o) => o.customer_email?.toLowerCase()),
+    ).size;
   }
 
   return result;
