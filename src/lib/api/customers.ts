@@ -62,6 +62,17 @@ export async function exportCustomerData(id: string) {
   };
 }
 
+/**
+ * Remove a customer from the Customers list (soft delete). Their orders are
+ * untouched — they are invoice records. A new order from the same email
+ * revives the customer.
+ */
+export async function deleteCustomer(id: string): Promise<void> {
+  assertOk(
+    await supabase.from("customers").update({ deleted_at: new Date().toISOString() }).eq("id", id),
+  );
+}
+
 /** GDPR Art. 17 — irreversibly anonymise personal data while keeping accounting records. */
 export async function anonymiseCustomer(id: string): Promise<void> {
   const customer = await getCustomer(id);

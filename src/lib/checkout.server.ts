@@ -251,6 +251,8 @@ export async function createOrderRecord(
         newsletter_opt_in: input.newsletter_opt_in ?? false,
         gdpr_consent_at: now,
         gdpr_consent_text: input.gdpr_consent_text ?? "Checkout privacy policy accepted",
+        // A customer deleted in the admin reappears when they order again.
+        deleted_at: null,
       },
       { onConflict: "email" },
     )

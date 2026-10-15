@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   getCustomers,
   exportCustomerData,
-  anonymiseCustomer,
+  deleteCustomer,
   type CustomerListRow,
 } from "@/lib/api/customers";
 import { getOrdersByCustomerEmail } from "@/lib/api/orders";
@@ -103,7 +103,7 @@ function CustomersPage() {
   const [tab, setTab] = useState<Segment | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<CustomerListRow | null>(null);
-  const [pendingAnonymise, setPendingAnonymise] = useState<{ id: string; email: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; email: string } | null>(null);
   const [messageFor, setMessageFor] = useState<string[] | null>(null);
   const [messageForm, setMessageForm] = useState({ subject: "", body: "" });
 
@@ -132,11 +132,11 @@ function CustomersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const anonymise = useMutation({
-    mutationFn: (id: string) => anonymiseCustomer(id),
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteCustomer(id),
     onSuccess: () => {
-      toast.success("Customer anonymised");
-      setPendingAnonymise(null);
+      toast.success("Customer deleted");
+      setPendingDelete(null);
       setProfile(null);
       qc.invalidateQueries({ queryKey: ["customers"] });
     },
@@ -190,7 +190,7 @@ function CustomersPage() {
       <PageHeader
         eyebrow="People"
         title="Customers"
-        description="Every signed-in account shows up here the moment they log in — Google, email OTP, or an order as a guest. GDPR Art. 17 erasure anonymises personal data while keeping legally required accounting records."
+        description="Every signed-in account shows up here the moment they log in — Google, email OTP, or an order as a guest. Deleting a customer removes them from this list; their orders are kept for accounting."
         actions={
           <Button variant="outline" onClick={exportAll}>
             Export CSV
@@ -431,26 +431,29 @@ function CustomersPage() {
               customer={profile}
               onExport={() => exportOne.mutate(profile.id)}
               exportPending={exportOne.isPending}
-              onAnonymise={() => setPendingAnonymise({ id: profile.id, email: profile.email })}
+              onDelete={() => setPendingDelete({ id: profile.id, email: profile.email })}
             />
           )}
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={!!pendingAnonymise} onOpenChange={(v) => !v && setPendingAnonymise(null)}>
+      <AlertDialog open={!!pendingDelete} onOpenChange={(v) => !v && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Anonymise {pendingAnonymise?.email}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {pendingDelete?.email}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes name, email, phone and addresses from the customer record and
-              their orders, and deletes newsletter subscriptions. Order totals stay for tax records.
-              This cannot be undone.
+              This removes the customer from your Customers list and stops messages to them. Their
+              orders are kept for accounting and invoices. If they place a new order, they will
+              appear again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => pendingAnonymise && anonymise.mutate(pendingAnonymise.id)}>
-              Anonymise
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={() => pendingDelete && remove.mutate(pendingDelete.id)}
+            >
+              {remove.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -472,12 +475,12 @@ function ProfileHistory({
   customer,
   onExport,
   exportPending,
-  onAnonymise,
+  onDelete,
 }: {
   customer: CustomerListRow;
   onExport: () => void;
   exportPending: boolean;
-  onAnonymise: () => void;
+  onDelete: () => void;
 }) {
   const orders = useQuery({
     queryKey: ["customer-orders", customer.email],
@@ -596,8 +599,8 @@ function ProfileHistory({
             <Button size="sm" variant="outline" disabled={exportPending} onClick={onExport}>
               Export data
             </Button>
-            <Button size="sm" variant="destructive" onClick={onAnonymise}>
-              Anonymise
+            <Button size="sm" variant="destructive" onClick={onDelete}>
+              Delete
             </Button>
           </div>
         </section>
