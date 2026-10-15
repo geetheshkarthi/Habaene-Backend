@@ -19,7 +19,8 @@ import {
   deleteProduct,
 } from "@/lib/api/products";
 import { uploadProductImage, deleteProductImage, getImageUrls } from "@/lib/api/storage";
-import { PRODUCT_CATEGORIES, type Product, type ProductInsert } from "@/lib/api/types";
+import { type Product, type ProductInsert } from "@/lib/api/types";
+import { CategorySelect } from "@/components/admin/CategorySelect";
 import { money, slugify, num, toCsv, downloadFile } from "@/lib/format";
 import { imageUrl } from "@/lib/config";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
@@ -488,19 +489,12 @@ function InventoryPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {PRODUCT_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategorySelect
+                value={category}
+                onChange={setCategory}
+                allLabel="All categories"
+                triggerClassName="w-40"
+              />
             </div>
           )}
         </div>
@@ -714,23 +708,10 @@ function InventoryPage() {
               </div>
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select
+                <CategorySelect
                   value={form.category}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, category: v as Product["category"] }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRODUCT_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => setForm((f) => ({ ...f, category: v as Product["category"] }))}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

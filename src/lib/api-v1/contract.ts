@@ -68,6 +68,10 @@ export interface PublicProduct {
   position: number;
 }
 
+export interface CategoryListResult {
+  items: string[];
+}
+
 export interface ProductListResult {
   items: PublicProduct[];
   total: number;

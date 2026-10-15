@@ -75,6 +75,18 @@ function parse<T extends z.ZodTypeAny>(schema: T, payload: unknown): z.infer<T> 
 
 /* -------------------------------- products -------------------------------- */
 
+const BUILT_IN_CATEGORIES = ["system", "carry", "luggage"];
+
+/** Live list of product categories (the enum can grow); falls back to the built-in three. */
+async function categoryNames(): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.rpc("list_product_categories");
+  return !error && Array.isArray(data) && data.length > 0 ? data : BUILT_IN_CATEGORIES;
+}
+
+export async function listCategories(): Promise<{ items: string[] }> {
+  return { items: await categoryNames() };
+}
+
 export async function listProducts(url: URL): Promise<ProductListResult> {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 50), 1), 100);
   const offset = Math.max(Number(url.searchParams.get("offset") ?? 0), 0);
@@ -90,7 +102,7 @@ export async function listProducts(url: URL): Promise<ProductListResult> {
     .order("created_at", { ascending: false });
 
   if (category && category !== "all") {
-    if (!["system", "carry", "luggage"].includes(category)) {
+    if (!(await categoryNames()).includes(category)) {
       throw badRequest("Unknown category", { category });
     }
     query = query.eq("category", category as "system");

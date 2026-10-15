@@ -847,6 +847,8 @@ export type Database = {
         Returns: boolean;
       };
       is_admin: { Args: never; Returns: boolean };
+      list_product_categories: { Args: never; Returns: string[] };
+      add_product_category: { Args: { p_name: string }; Returns: string };
     };
     Enums: {
       app_role: "admin";

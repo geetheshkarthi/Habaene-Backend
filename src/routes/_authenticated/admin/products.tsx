@@ -9,7 +9,8 @@ import {
   findPriorityClash,
   type ProductFilters,
 } from "@/lib/api/products";
-import { PRODUCT_CATEGORIES, type Product } from "@/lib/api/types";
+import { type Product } from "@/lib/api/types";
+import { CategorySelect } from "@/components/admin/CategorySelect";
 import { money, num } from "@/lib/format";
 import { imageUrl } from "@/lib/config";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -186,22 +187,12 @@ function ProductsPage() {
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
         />
-        <Select
+        <CategorySelect
           value={filters.category}
-          onValueChange={(v) => setFilters((f) => ({ ...f, category: v }))}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {PRODUCT_CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(v) => setFilters((f) => ({ ...f, category: v }))}
+          allLabel="All categories"
+          triggerClassName="w-40"
+        />
         <Select
           value={filters.stock}
           onValueChange={(v) =>

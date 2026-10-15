@@ -45,6 +45,10 @@ export async function dispatch(request: Request, path: string): Promise<Response
         if (method !== "GET") return methodNotAllowed(method);
         return ok(await h.getPublicStore());
 
+      case "categories":
+        if (method !== "GET") return methodNotAllowed(method);
+        return ok(await h.listCategories());
+
       case "products":
         if (method !== "GET") return methodNotAllowed(method);
         return second ? ok(await h.getProductBySlug(second)) : ok(await h.listProducts(url));
