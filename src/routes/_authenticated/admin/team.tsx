@@ -59,7 +59,7 @@ function TeamPage() {
   const revoke = useMutation({
     mutationFn: ({ uid, r }: { uid: string; r: AppRole }) => removeRole(uid, r),
     onSuccess: () => {
-      toast.success("Role removed");
+      toast.success("Access removed");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -74,7 +74,7 @@ function TeamPage() {
       <PageHeader
         eyebrow="Administration"
         title="Admin Roles"
-        description="Grant and revoke module access. A user may hold more than one role."
+        description="Choose who can use which parts of the dashboard. One person can have more than one role."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -169,7 +169,7 @@ function TeamPage() {
                       disabled={revoke.isPending}
                       onClick={() => revoke.mutate({ uid: m.user_id, r: m.role })}
                     >
-                      Revoke
+                      Remove access
                     </Button>
                   </td>
                 </tr>
