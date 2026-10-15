@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Tag,
   ChevronDown,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 import { useIsAdmin, signOut } from "@/hooks/useAdmin";
@@ -92,6 +93,14 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/admin/seo", label: "SEO Dashboard" },
       { to: "/admin/seo/redirects", label: "Redirects" },
       { to: "/admin/seo/search-analytics", label: "Search Analytics" },
+    ],
+  },
+  {
+    label: "Administration",
+    icon: Shield,
+    items: [
+      { to: "/admin/team", label: "Admin Roles" },
+      { to: "/admin/change-password", label: "Change Password" },
     ],
   },
   {

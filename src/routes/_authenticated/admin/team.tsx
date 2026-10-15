@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/admin/team")({
-  head: () => ({ meta: [{ title: "Team — HABÄNE Admin" }] }),
+  head: () => ({ meta: [{ title: "Admin Roles — HABÄNE Admin" }] }),
   component: TeamPage,
 });
 
@@ -73,7 +73,7 @@ function TeamPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Administration"
-        title="Team"
+        title="Admin Roles"
         description="Grant and revoke module access. A user may hold more than one role."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>

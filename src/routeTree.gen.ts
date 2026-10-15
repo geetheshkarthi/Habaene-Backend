@@ -20,6 +20,7 @@ import { Route as AuthenticatedAdminAbandonedCartsRouteImport } from './routes/_
 import { Route as AuthenticatedAdminAuditLogRouteImport } from './routes/_authenticated/admin/audit-log'
 import { Route as AuthenticatedAdminBackInStockRouteImport } from './routes/_authenticated/admin/back-in-stock'
 import { Route as AuthenticatedAdminCampaignsRouteImport } from './routes/_authenticated/admin/campaigns'
+import { Route as AuthenticatedAdminChangePasswordRouteImport } from './routes/_authenticated/admin/change-password'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin/customers'
 import { Route as AuthenticatedAdminDiscountsRouteImport } from './routes/_authenticated/admin/discounts'
 import { Route as AuthenticatedAdminEarlyAccessRouteImport } from './routes/_authenticated/admin/early-access'
@@ -122,6 +123,12 @@ const AuthenticatedAdminCampaignsRoute =
   AuthenticatedAdminCampaignsRouteImport.update({
     id: '/campaigns',
     path: '/campaigns',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminChangePasswordRoute =
+  AuthenticatedAdminChangePasswordRouteImport.update({
+    id: '/change-password',
+    path: '/change-password',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminCustomersRoute =
@@ -399,6 +406,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit-log': typeof AuthenticatedAdminAuditLogRoute
   '/admin/back-in-stock': typeof AuthenticatedAdminBackInStockRoute
   '/admin/campaigns': typeof AuthenticatedAdminCampaignsRoute
+  '/admin/change-password': typeof AuthenticatedAdminChangePasswordRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/discounts': typeof AuthenticatedAdminDiscountsRoute
   '/admin/early-access': typeof AuthenticatedAdminEarlyAccessRoute
@@ -455,6 +463,7 @@ export interface FileRoutesByTo {
   '/admin/audit-log': typeof AuthenticatedAdminAuditLogRoute
   '/admin/back-in-stock': typeof AuthenticatedAdminBackInStockRoute
   '/admin/campaigns': typeof AuthenticatedAdminCampaignsRoute
+  '/admin/change-password': typeof AuthenticatedAdminChangePasswordRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/discounts': typeof AuthenticatedAdminDiscountsRoute
   '/admin/early-access': typeof AuthenticatedAdminEarlyAccessRoute
@@ -514,6 +523,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/audit-log': typeof AuthenticatedAdminAuditLogRoute
   '/_authenticated/admin/back-in-stock': typeof AuthenticatedAdminBackInStockRoute
   '/_authenticated/admin/campaigns': typeof AuthenticatedAdminCampaignsRoute
+  '/_authenticated/admin/change-password': typeof AuthenticatedAdminChangePasswordRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/discounts': typeof AuthenticatedAdminDiscountsRoute
   '/_authenticated/admin/early-access': typeof AuthenticatedAdminEarlyAccessRoute
@@ -573,6 +583,7 @@ export interface FileRouteTypes {
     | '/admin/audit-log'
     | '/admin/back-in-stock'
     | '/admin/campaigns'
+    | '/admin/change-password'
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/early-access'
@@ -629,6 +640,7 @@ export interface FileRouteTypes {
     | '/admin/audit-log'
     | '/admin/back-in-stock'
     | '/admin/campaigns'
+    | '/admin/change-password'
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/early-access'
@@ -687,6 +699,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/audit-log'
     | '/_authenticated/admin/back-in-stock'
     | '/_authenticated/admin/campaigns'
+    | '/_authenticated/admin/change-password'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/discounts'
     | '/_authenticated/admin/early-access'
@@ -826,6 +839,13 @@ declare module '@tanstack/react-router' {
       path: '/campaigns'
       fullPath: '/admin/campaigns'
       preLoaderRoute: typeof AuthenticatedAdminCampaignsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/change-password': {
+      id: '/_authenticated/admin/change-password'
+      path: '/change-password'
+      fullPath: '/admin/change-password'
+      preLoaderRoute: typeof AuthenticatedAdminChangePasswordRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/admin/customers': {
@@ -1151,6 +1171,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminAuditLogRoute: typeof AuthenticatedAdminAuditLogRoute
   AuthenticatedAdminBackInStockRoute: typeof AuthenticatedAdminBackInStockRoute
   AuthenticatedAdminCampaignsRoute: typeof AuthenticatedAdminCampaignsRoute
+  AuthenticatedAdminChangePasswordRoute: typeof AuthenticatedAdminChangePasswordRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminDiscountsRoute: typeof AuthenticatedAdminDiscountsRoute
   AuthenticatedAdminEarlyAccessRoute: typeof AuthenticatedAdminEarlyAccessRoute
@@ -1200,6 +1221,8 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminAuditLogRoute: AuthenticatedAdminAuditLogRoute,
     AuthenticatedAdminBackInStockRoute: AuthenticatedAdminBackInStockRoute,
     AuthenticatedAdminCampaignsRoute: AuthenticatedAdminCampaignsRoute,
+    AuthenticatedAdminChangePasswordRoute:
+      AuthenticatedAdminChangePasswordRoute,
     AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
     AuthenticatedAdminDiscountsRoute: AuthenticatedAdminDiscountsRoute,
     AuthenticatedAdminEarlyAccessRoute: AuthenticatedAdminEarlyAccessRoute,
