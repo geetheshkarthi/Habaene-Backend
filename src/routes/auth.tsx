@@ -36,10 +36,33 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
+
+  async function sendReset(e: React.FormEvent) {
+    e.preventDefault();
+    const email = resetEmail.trim();
+    if (!z.string().email().safeParse(email).success) {
+      toast.error("Enter a valid email");
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    // Same message whether or not the email exists, so accounts can't be probed.
+    setResetSent(true);
+  }
 
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
@@ -79,12 +102,51 @@ function AuthPage() {
       <div className="flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm">
           <span className="eyebrow text-muted-foreground">Administrator access</span>
-          <h2 className="mt-3 text-3xl">Sign in</h2>
+          <h2 className="mt-3 text-3xl">{forgot ? "Forgot password" : "Sign in"}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Customer accounts do not exist — the storefront checks out as guest.
+            {forgot
+              ? "Enter your admin email and we'll send you a link to set a new password."
+              : "Customer accounts do not exist — the storefront checks out as guest."}
           </p>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
+          {forgot && (
+            <div className="mt-8 space-y-5">
+              {resetSent ? (
+                <p className="rounded-md border border-border bg-card p-4 text-sm">
+                  If that email belongs to an administrator, a reset link is on its way. Check your
+                  inbox (and spam), then follow the link.
+                </p>
+              ) : (
+                <form onSubmit={sendReset} className="space-y-5" noValidate>
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      autoComplete="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Sending…" : "Send reset link"}
+                  </Button>
+                </form>
+              )}
+              <button
+                type="button"
+                className="text-sm text-muted-foreground underline"
+                onClick={() => {
+                  setForgot(false);
+                  setResetSent(false);
+                }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          )}
+
+          <form hidden={forgot} onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
@@ -107,6 +169,16 @@ function AuthPage() {
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Signing in…" : "Sign in"}
             </Button>
+            <button
+              type="button"
+              className="block text-sm text-muted-foreground underline"
+              onClick={() => {
+                setResetEmail(form.getValues("email"));
+                setForgot(true);
+              }}
+            >
+              Forgot password?
+            </button>
           </form>
         </div>
       </div>
