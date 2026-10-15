@@ -54,7 +54,6 @@ export interface PublicProduct {
   song_title: string | null;
   song_artist: string | null;
   song_artwork_url: string | null;
-  song_preview_url: string | null;
   song_url: string | null;
   weight_kg: number;
   mood: unknown;

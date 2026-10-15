@@ -181,7 +181,7 @@ function ProductsPage() {
 
       <div className="flex flex-wrap gap-3">
         <Input
-          placeholder="Search name, code or slug"
+          placeholder="Search name or code"
           className="max-w-xs"
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -259,7 +259,7 @@ function ProductsPage() {
                         )}
                         <div>
                           <p>{p.name}</p>
-                          <p className="text-xs text-muted-foreground">{p.code || p.slug}</p>
+                          <p className="text-xs text-muted-foreground">{p.code}</p>
                         </div>
                       </div>
                     </TableCell>

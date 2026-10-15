@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Pause, Play, Search, X } from "lucide-react";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Link2, Search, X } from "lucide-react";
+import { toast } from "sonner";
+import { spotifyLookupFn, spotifySearchFn } from "@/lib/commerce.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -7,33 +10,19 @@ export interface Song {
   title: string;
   artist: string;
   artwork_url: string;
-  preview_url: string;
+  /** Spotify track link, e.g. https://open.spotify.com/track/<id> */
   url: string;
 }
 
-interface ItunesTrack {
-  trackId: number;
-  trackName: string;
-  artistName: string;
-  artworkUrl100?: string;
-  previewUrl?: string;
-  trackViewUrl?: string;
-}
-
-function toSong(t: ItunesTrack): Song {
-  return {
-    title: t.trackName,
-    artist: t.artistName,
-    artwork_url: (t.artworkUrl100 ?? "").replace("100x100", "300x300"),
-    preview_url: t.previewUrl ?? "",
-    url: t.trackViewUrl ?? "",
-  };
+function embedUrl(url: string): string | null {
+  const id = /track\/([A-Za-z0-9]{22})/.exec(url)?.[1];
+  return id ? `https://open.spotify.com/embed/track/${id}?utm_source=generator&theme=0` : null;
 }
 
 /**
- * Pick one song for a product. Searches Apple's public iTunes Search API (no
- * key needed) and stores the track's title, artist, artwork and 30-second
- * preview URL on the product, which the storefront plays on the product page.
+ * Pick the Spotify song for a product: paste a track link, or search by name
+ * (search needs SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET to be configured).
+ * The storefront embeds the Spotify player for the selected track.
  */
 export function SongPicker({
   value,
@@ -42,107 +31,92 @@ export function SongPicker({
   value: Song | null;
   onChange: (song: Song | null) => void;
 }) {
+  const lookup = useServerFn(spotifyLookupFn);
+  const search = useServerFn(spotifySearchFn);
+
+  const [link, setLink] = useState("");
   const [term, setTerm] = useState("");
-  const [results, setResults] = useState<ItunesTrack[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [playing, setPlaying] = useState<string | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
+  const [busy, setBusy] = useState<"link" | "search" | null>(null);
+  const [results, setResults] = useState<Song[]>([]);
+  const [note, setNote] = useState<string | null>(null);
 
-  useEffect(() => {
-    const el = new Audio();
-    el.onended = () => setPlaying(null);
-    audio.current = el;
-    return () => {
-      el.pause();
-      audio.current = null;
-    };
-  }, []);
-
-  async function search() {
-    const q = term.trim();
-    if (!q) return;
-    setSearching(true);
-    setError(null);
+  async function useLink() {
+    if (!link.trim()) return;
+    setBusy("link");
+    setNote(null);
     try {
-      const res = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=10`,
-      );
-      if (!res.ok) throw new Error(`Search failed (${res.status})`);
-      const data = (await res.json()) as { results?: ItunesTrack[] };
-      const tracks = (data.results ?? []).filter((t) => t.previewUrl);
-      setResults(tracks);
-      if (tracks.length === 0) setError("No playable songs found — try another search.");
+      const song = await lookup({ data: { url: link } });
+      onChange(song);
+      setLink("");
+      setResults([]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Search failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't read that link");
     } finally {
-      setSearching(false);
+      setBusy(null);
     }
   }
 
-  function togglePreview(url: string) {
-    const el = audio.current;
-    if (!el || !url) return;
-    if (playing === url) {
-      el.pause();
-      setPlaying(null);
-      return;
+  async function runSearch() {
+    if (!term.trim()) return;
+    setBusy("search");
+    setNote(null);
+    try {
+      const r = await search({ data: { query: term } });
+      if (!r.configured) {
+        setResults([]);
+        setNote(
+          "Search isn't set up yet (needs SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET). Paste a Spotify track link above instead.",
+        );
+      } else {
+        setResults(r.tracks);
+        if (r.tracks.length === 0) setNote("No songs found — try another search.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Search failed");
+    } finally {
+      setBusy(null);
     }
-    el.src = url;
-    el.play().then(
-      () => setPlaying(url),
-      () => setPlaying(null),
-    );
   }
 
-  function choose(t: ItunesTrack) {
-    audio.current?.pause();
-    setPlaying(null);
-    onChange(toSong(t));
-    setResults([]);
-    setTerm("");
-  }
+  const embed = value ? embedUrl(value.url) : null;
 
   return (
     <div className="space-y-3">
       {value ? (
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-          {value.artwork_url ? (
-            <img src={value.artwork_url} alt="" className="h-14 w-14 rounded-md object-cover" />
-          ) : (
-            <div className="h-14 w-14 rounded-md bg-muted" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{value.title}</p>
-            <p className="truncate text-xs text-muted-foreground">{value.artist}</p>
-          </div>
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            disabled={!value.preview_url}
-            onClick={() => togglePreview(value.preview_url)}
-            aria-label="Play preview"
-          >
-            {playing === value.preview_url ? (
-              <Pause className="h-4 w-4" />
+        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+          <div className="flex items-center gap-3">
+            {value.artwork_url ? (
+              <img src={value.artwork_url} alt="" className="h-12 w-12 rounded-md object-cover" />
             ) : (
-              <Play className="h-4 w-4" />
+              <div className="h-12 w-12 rounded-md bg-muted" />
             )}
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            onClick={() => {
-              audio.current?.pause();
-              setPlaying(null);
-              onChange(null);
-            }}
-            aria-label="Remove song"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{value.title || "Spotify track"}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {value.artist || value.url}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => onChange(null)}
+              aria-label="Remove song"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          {embed && (
+            <iframe
+              title="Spotify preview"
+              src={embed}
+              width="100%"
+              height="80"
+              allow="encrypted-media"
+              loading="lazy"
+              className="rounded-md border-0"
+            />
+          )}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">No song selected.</p>
@@ -150,51 +124,64 @@ export function SongPicker({
 
       <div className="flex gap-2">
         <Input
-          placeholder="Search a song or artist…"
+          placeholder="Paste a Spotify track link — https://open.spotify.com/track/…"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void useLink();
+            }
+          }}
+        />
+        <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void useLink()}>
+          <Link2 className="h-4 w-4" />
+          {busy === "link" ? "Reading…" : "Use link"}
+        </Button>
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          placeholder="…or search Spotify by song or artist"
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              void search();
+              void runSearch();
             }
           }}
         />
-        <Button type="button" variant="outline" disabled={searching} onClick={() => void search()}>
+        <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void runSearch()}>
           <Search className="h-4 w-4" />
-          {searching ? "Searching…" : "Search"}
+          {busy === "search" ? "Searching…" : "Search"}
         </Button>
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {note && <p className="text-xs text-muted-foreground">{note}</p>}
 
       {results.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {results.map((t) => (
-            <li key={t.trackId} className="flex items-center gap-3 p-2">
-              {t.artworkUrl100 ? (
-                <img src={t.artworkUrl100} alt="" className="h-10 w-10 rounded object-cover" />
+            <li key={t.url} className="flex items-center gap-3 p-2">
+              {t.artwork_url ? (
+                <img src={t.artwork_url} alt="" className="h-10 w-10 rounded object-cover" />
               ) : (
                 <div className="h-10 w-10 rounded bg-muted" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm">{t.trackName}</p>
-                <p className="truncate text-xs text-muted-foreground">{t.artistName}</p>
+                <p className="truncate text-sm">{t.title}</p>
+                <p className="truncate text-xs text-muted-foreground">{t.artist}</p>
               </div>
               <Button
                 type="button"
-                size="icon"
-                variant="ghost"
-                onClick={() => togglePreview(t.previewUrl ?? "")}
-                aria-label="Play preview"
+                size="sm"
+                onClick={() => {
+                  onChange(t);
+                  setResults([]);
+                  setTerm("");
+                }}
               >
-                {playing === t.previewUrl ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-              <Button type="button" size="sm" onClick={() => choose(t)}>
                 Select
               </Button>
             </li>

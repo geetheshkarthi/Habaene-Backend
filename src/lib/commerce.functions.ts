@@ -221,3 +221,24 @@ export const sendReturnUpdateFn = createServerFn({ method: "POST" })
     );
     return sendEmail({ to: ret.customer_email, ...mail });
   });
+
+/** Resolve a pasted Spotify track link to its title / artist / artwork (admin only). */
+export const spotifyLookupFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ url: z.string().min(1).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase);
+    const { lookupSpotifyTrack } = await import("./spotify.server");
+    return lookupSpotifyTrack(data.url);
+  });
+
+/** Search Spotify tracks by name (admin only). `configured` is false until app credentials exist. */
+export const spotifySearchFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ query: z.string().min(1).max(200) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase);
+    const { searchSpotifyTracks, spotifySearchConfigured } = await import("./spotify.server");
+    if (!spotifySearchConfigured()) return { configured: false, tracks: [] };
+    return { configured: true, tracks: await searchSpotifyTracks(data.query) };
+  });

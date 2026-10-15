@@ -114,13 +114,12 @@ function rowsToSpecs(rows: SpecRow[]): Record<string, string> {
   return out;
 }
 function songFromProduct(p: Product): Song | null {
-  if (!p.song_preview_url && !p.song_title) return null;
+  if (!p.song_url) return null;
   return {
     title: p.song_title ?? "",
     artist: p.song_artist ?? "",
     artwork_url: p.song_artwork_url ?? "",
-    preview_url: p.song_preview_url ?? "",
-    url: p.song_url ?? "",
+    url: p.song_url,
   };
 }
 function listFromJson(value: unknown): string[] {
@@ -248,7 +247,6 @@ function InventoryPage() {
         song_title: form.song?.title || null,
         song_artist: form.song?.artist || null,
         song_artwork_url: form.song?.artwork_url || null,
-        song_preview_url: form.song?.preview_url || null,
         song_url: form.song?.url || null,
         mood: {
           label: form.moodLabel,
@@ -715,14 +713,6 @@ function InventoryPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Slug</Label>
-                <Input
-                  placeholder={slugify(form.name)}
-                  value={form.slug}
-                  onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>Category</Label>
                 <Select
                   value={form.category}
@@ -915,8 +905,8 @@ function InventoryPage() {
               <div className="space-y-2 sm:col-span-2">
                 <Label>Product song</Label>
                 <p className="text-xs text-muted-foreground">
-                  Shown as the "Get into the mood" player on this product's page (30-second preview).
-                  Leave empty to hide the player.
+                  Shown as the Spotify "Get into the mood" player on this product's page. Leave empty to
+                  hide the player.
                 </p>
                 <SongPicker value={form.song} onChange={(song) => setForm((f) => ({ ...f, song }))} />
               </div>

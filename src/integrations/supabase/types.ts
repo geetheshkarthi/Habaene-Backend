@@ -444,7 +444,6 @@ export type Database = {
           slug: string;
           song_artist: string | null;
           song_artwork_url: string | null;
-          song_preview_url: string | null;
           song_title: string | null;
           song_url: string | null;
           specs: Json;
@@ -483,7 +482,6 @@ export type Database = {
           slug: string;
           song_artist?: string | null;
           song_artwork_url?: string | null;
-          song_preview_url?: string | null;
           song_title?: string | null;
           song_url?: string | null;
           specs?: Json;
@@ -522,7 +520,6 @@ export type Database = {
           slug?: string;
           song_artist?: string | null;
           song_artwork_url?: string | null;
-          song_preview_url?: string | null;
           song_title?: string | null;
           song_url?: string | null;
           specs?: Json;

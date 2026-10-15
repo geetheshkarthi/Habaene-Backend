@@ -111,8 +111,7 @@ Response `200`:
         "song_title": "An Ending (Ascent)",
         "song_artist": "Brian Eno",
         "song_artwork_url": "https://…",
-        "song_preview_url": "https://…",
-        "song_url": "https://…",
+        "song_url": "https://open.spotify.com/track/…",
         "weight_kg": 1.1
       }
     ],

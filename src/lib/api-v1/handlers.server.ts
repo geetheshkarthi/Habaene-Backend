@@ -41,7 +41,7 @@ import { SYSTEM_CHECK_COMPONENTS } from "./contract";
 export const APP_VERSION = "1.0.0";
 
 const PRODUCT_COLUMNS =
-  "id, code, name, slug, subtitle, description, badge, category, price, vat_rate, stock, images, card_image, passport_code, specs, song_title, song_artist, song_artwork_url, song_preview_url, song_url, weight_kg, mood, pack_items, passport_service, passport_role, materials, care_instructions, product_story, warranty_info, blueprint, position";
+  "id, code, name, slug, subtitle, description, badge, category, price, vat_rate, stock, images, card_image, passport_code, specs, song_title, song_artist, song_artwork_url, song_url, weight_kg, mood, pack_items, passport_service, passport_role, materials, care_instructions, product_story, warranty_info, blueprint, position";
 
 type ProductRow = {
   price: number | string;
