@@ -6,6 +6,7 @@ import {
   getCustomers,
   exportCustomerData,
   deleteCustomer,
+  deleteCustomers,
   type CustomerListRow,
 } from "@/lib/api/customers";
 import { getOrdersByCustomerEmail } from "@/lib/api/orders";
@@ -39,7 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Mail, RefreshCw, Search, Sparkles, UserPlus, Clock3, Eye, User } from "lucide-react";
+import { Mail, RefreshCw, Search, Sparkles, UserPlus, Clock3, Eye, User, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/customers")({
@@ -104,6 +105,7 @@ function CustomersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<CustomerListRow | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; email: string } | null>(null);
+  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
   const [messageFor, setMessageFor] = useState<string[] | null>(null);
   const [messageForm, setMessageForm] = useState({ subject: "", body: "" });
 
@@ -138,6 +140,17 @@ function CustomersPage() {
       toast.success("Customer deleted");
       setPendingDelete(null);
       setProfile(null);
+      qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkRemove = useMutation({
+    mutationFn: (ids: string[]) => deleteCustomers(ids),
+    onSuccess: (_, ids) => {
+      toast.success(`${ids.length} customer(s) removed`);
+      setConfirmBulkRemove(false);
+      setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["customers"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -276,6 +289,15 @@ function CustomersPage() {
           >
             <Mail className="h-4 w-4" />
             Message Selected ({selected.size})
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={selected.size === 0}
+            onClick={() => setConfirmBulkRemove(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Remove Selected ({selected.size})
           </Button>
         </div>
       </div>
@@ -436,6 +458,31 @@ function CustomersPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={confirmBulkRemove} onOpenChange={setConfirmBulkRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {selected.size} customer(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The selected customers are removed from your Customers list and stop receiving
+              messages. Their orders are kept for accounting, and a customer reappears if they place
+              a new order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkRemove.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                bulkRemove.mutate(Array.from(selected));
+              }}
+            >
+              {bulkRemove.isPending ? "Removing…" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => !v && setPendingDelete(null)}>
         <AlertDialogContent>

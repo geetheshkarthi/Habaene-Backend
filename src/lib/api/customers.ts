@@ -73,6 +73,14 @@ export async function deleteCustomer(id: string): Promise<void> {
   );
 }
 
+/** Soft-delete several customers at once (see deleteCustomer). */
+export async function deleteCustomers(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  assertOk(
+    await supabase.from("customers").update({ deleted_at: new Date().toISOString() }).in("id", ids),
+  );
+}
+
 /** GDPR Art. 17 — irreversibly anonymise personal data while keeping accounting records. */
 export async function anonymiseCustomer(id: string): Promise<void> {
   const customer = await getCustomer(id);
