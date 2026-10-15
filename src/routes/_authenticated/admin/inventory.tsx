@@ -23,6 +23,7 @@ import { PRODUCT_CATEGORIES, type Product, type ProductInsert } from "@/lib/api/
 import { money, slugify, num, toCsv, downloadFile } from "@/lib/format";
 import { imageUrl } from "@/lib/config";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
+import { SongPicker, type Song } from "@/components/admin/SongPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,10 +71,6 @@ interface SpecRow {
   key: string;
   value: string;
 }
-interface ColorRow {
-  name: string;
-  hex: string;
-}
 
 const EMPTY_FORM = {
   name: "",
@@ -89,8 +86,7 @@ const EMPTY_FORM = {
   images: [] as string[],
   card_image: null as string | null,
   specs: [] as SpecRow[],
-  colors: [] as ColorRow[],
-  sizes: [] as string[],
+  song: null as Song | null,
   moodLabel: "",
   moodQuiet: 50,
   moodUrban: 50,
@@ -117,16 +113,15 @@ function rowsToSpecs(rows: SpecRow[]): Record<string, string> {
   for (const r of rows) if (r.key.trim()) out[r.key.trim()] = r.value;
   return out;
 }
-function colorsFromJson(colors: unknown): ColorRow[] {
-  if (!Array.isArray(colors)) return [];
-  return colors.map((c) =>
-    c && typeof c === "object"
-      ? {
-          name: String((c as Record<string, unknown>)["name"] ?? ""),
-          hex: String((c as Record<string, unknown>)["hex"] ?? "#000000"),
-        }
-      : { name: String(c), hex: "#000000" },
-  );
+function songFromProduct(p: Product): Song | null {
+  if (!p.song_preview_url && !p.song_title) return null;
+  return {
+    title: p.song_title ?? "",
+    artist: p.song_artist ?? "",
+    artwork_url: p.song_artwork_url ?? "",
+    preview_url: p.song_preview_url ?? "",
+    url: p.song_url ?? "",
+  };
 }
 function listFromJson(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -250,8 +245,11 @@ function InventoryPage() {
         images: form.images,
         card_image: form.images[0] ?? null,
         specs: rowsToSpecs(form.specs),
-        colors: form.colors as unknown as ProductInsert["colors"],
-        sizes: form.sizes,
+        song_title: form.song?.title || null,
+        song_artist: form.song?.artist || null,
+        song_artwork_url: form.song?.artwork_url || null,
+        song_preview_url: form.song?.preview_url || null,
+        song_url: form.song?.url || null,
         mood: {
           label: form.moodLabel,
           quiet: num(form.moodQuiet),
@@ -306,8 +304,7 @@ function InventoryPage() {
       images: Array.isArray(p.images) ? [...p.images] : [],
       card_image: p.card_image ?? null,
       specs: specsToRows(p.specs),
-      colors: colorsFromJson(p.colors),
-      sizes: listFromJson(p.sizes),
+      song: songFromProduct(p),
       moodLabel: mood.label,
       moodQuiet: mood.quiet,
       moodUrban: mood.urban,
@@ -698,7 +695,7 @@ function InventoryPage() {
             <TabsList className="grid grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="images">Images</TabsTrigger>
-              <TabsTrigger value="variants">Specs &amp; Variants</TabsTrigger>
+              <TabsTrigger value="variants">Specs &amp; Song</TabsTrigger>
               <TabsTrigger value="content">Story &amp; Content</TabsTrigger>
             </TabsList>
 
@@ -915,94 +912,13 @@ function InventoryPage() {
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label>Colors</Label>
-                {form.colors.map((row, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      placeholder="Name"
-                      value={row.name}
-                      onChange={(e) =>
-                        setForm((f) => {
-                          const colors = [...f.colors];
-                          colors[i] = { ...colors[i]!, name: e.target.value };
-                          return { ...f, colors };
-                        })
-                      }
-                    />
-                    <Input
-                      type="color"
-                      className="w-14 p-1"
-                      value={row.hex}
-                      onChange={(e) =>
-                        setForm((f) => {
-                          const colors = [...f.colors];
-                          colors[i] = { ...colors[i]!, hex: e.target.value };
-                          return { ...f, colors };
-                        })
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setForm((f) => ({ ...f, colors: f.colors.filter((_, j) => j !== i) }))
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setForm((f) => ({
-                      ...f,
-                      colors: [...f.colors, { name: "", hex: "#000000" }],
-                    }))
-                  }
-                >
-                  Add color
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Sizes</Label>
-                {form.sizes.map((size, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      value={size}
-                      onChange={(e) =>
-                        setForm((f) => {
-                          const sizes = [...f.sizes];
-                          sizes[i] = e.target.value;
-                          return { ...f, sizes };
-                        })
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setForm((f) => ({ ...f, sizes: f.sizes.filter((_, j) => j !== i) }))
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setForm((f) => ({ ...f, sizes: [...f.sizes, ""] }))}
-                >
-                  Add size
-                </Button>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Product song</Label>
+                <p className="text-xs text-muted-foreground">
+                  Shown as the "Get into the mood" player on this product's page (30-second preview).
+                  Leave empty to hide the player.
+                </p>
+                <SongPicker value={form.song} onChange={(song) => setForm((f) => ({ ...f, song }))} />
               </div>
             </TabsContent>
 

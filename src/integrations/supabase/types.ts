@@ -423,7 +423,6 @@ export type Database = {
           care_instructions: string;
           category: Database["public"]["Enums"]["product_category"];
           code: string;
-          colors: Json;
           cost_price: number;
           created_at: string;
           deleted_at: string | null;
@@ -442,8 +441,12 @@ export type Database = {
           position: number;
           price: number;
           product_story: string;
-          sizes: Json;
           slug: string;
+          song_artist: string | null;
+          song_artwork_url: string | null;
+          song_preview_url: string | null;
+          song_title: string | null;
+          song_url: string | null;
           specs: Json;
           stock: number;
           subtitle: string;
@@ -459,7 +462,6 @@ export type Database = {
           care_instructions?: string;
           category?: Database["public"]["Enums"]["product_category"];
           code: string;
-          colors?: Json;
           cost_price?: number;
           created_at?: string;
           deleted_at?: string | null;
@@ -478,8 +480,12 @@ export type Database = {
           position?: number;
           price: number;
           product_story?: string;
-          sizes?: Json;
           slug: string;
+          song_artist?: string | null;
+          song_artwork_url?: string | null;
+          song_preview_url?: string | null;
+          song_title?: string | null;
+          song_url?: string | null;
           specs?: Json;
           stock?: number;
           subtitle?: string;
@@ -495,7 +501,6 @@ export type Database = {
           care_instructions?: string;
           category?: Database["public"]["Enums"]["product_category"];
           code?: string;
-          colors?: Json;
           cost_price?: number;
           created_at?: string;
           deleted_at?: string | null;
@@ -514,8 +519,12 @@ export type Database = {
           position?: number;
           price?: number;
           product_story?: string;
-          sizes?: Json;
           slug?: string;
+          song_artist?: string | null;
+          song_artwork_url?: string | null;
+          song_preview_url?: string | null;
+          song_title?: string | null;
+          song_url?: string | null;
           specs?: Json;
           stock?: number;
           subtitle?: string;

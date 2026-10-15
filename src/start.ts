@@ -27,6 +27,7 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https: wss:",
+  "media-src 'self' https:",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",

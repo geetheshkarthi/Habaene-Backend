@@ -108,8 +108,11 @@ Response `200`:
         "card_image": "https://…",
         "passport_code": null,
         "specs": { "volume": "18 L" },
-        "colors": ["Ink", "Clay"],
-        "sizes": ["One size"],
+        "song_title": "An Ending (Ascent)",
+        "song_artist": "Brian Eno",
+        "song_artwork_url": "https://…",
+        "song_preview_url": "https://…",
+        "song_url": "https://…",
         "weight_kg": 1.1
       }
     ],
