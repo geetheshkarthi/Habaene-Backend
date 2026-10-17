@@ -6,6 +6,7 @@ import { getProducts } from "@/lib/api/products";
 import { uploadProductImage } from "@/lib/api/storage";
 import { imageUrl } from "@/lib/config";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AnnouncementBarSection } from "@/components/admin/AnnouncementBarSection";
 import { ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,13 @@ function HomepageEditor() {
           </Button>
         }
       />
+
+      <Section
+        title="Announcement bar"
+        hint="The messages that rotate in the bar at the very top of the website — use it to promote coupons and offers. Each message saves on its own."
+      >
+        <AnnouncementBarSection />
+      </Section>
 
       <Section
         title="Hero carousel"
