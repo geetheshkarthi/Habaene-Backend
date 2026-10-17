@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/admin/change-password")({
-  head: () => ({ meta: [{ title: "Change Password — HABÄNE Admin" }] }),
+  head: () => ({ meta: [{ title: "Passwords — HABÄNE Admin" }] }),
   component: ChangePasswordPage,
 });
 
@@ -54,7 +54,7 @@ function ChangePasswordPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Administration"
-        title="Change Password"
+        title="Passwords"
         description="Update the password for the account you're signed in with."
       />
 

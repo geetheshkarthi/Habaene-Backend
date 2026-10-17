@@ -101,7 +101,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Shield,
     items: [
       { to: "/admin/team", label: "Admin Roles" },
-      { to: "/admin/change-password", label: "Change Password" },
+      { to: "/admin/change-password", label: "Passwords" },
     ],
   },
   {
