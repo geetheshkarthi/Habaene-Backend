@@ -6,10 +6,10 @@ import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { getHomepage, updateHomepage } from "@/lib/api/cms";
 import { getProducts } from "@/lib/api/products";
 import {
-  MATCHER_OPTION_KEYS,
+  newId,
   normalizeMatcher,
   type MatcherConfig,
-  type MatcherGroup,
+  type MatcherQuestion,
   type MatcherRule,
 } from "@/lib/api/matcher";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -17,7 +17,6 @@ import { ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -31,7 +30,6 @@ export const Route = createFileRoute("/_authenticated/admin/cms/find-your-object
   component: FindYourObjectEditor,
 });
 
-const GROUPS: MatcherGroup[] = ["duration", "mode", "mood"];
 const ANY = "any";
 const NONE = "none";
 
@@ -64,7 +62,21 @@ function FindYourObjectEditor() {
   }, [homepage.data]);
 
   const save = useMutation({
-    mutationFn: () => updateHomepage({ matcher: form } as never),
+    mutationFn: () => {
+      if (form.questions.some((q) => !q.title.trim() || q.options.length < 2 || q.options.some((o) => !o.label.trim()))) {
+        throw new Error("Each question needs a title and at least two answers, all filled in.");
+      }
+      // Drop conditions that point at deleted questions / answers.
+      const rules = form.rules.map((r) => ({
+        ...r,
+        conditions: Object.fromEntries(
+          Object.entries(r.conditions).filter(([qid, val]) =>
+            form.questions.some((q) => q.id === qid && q.options.some((o) => o.value === val)),
+          ),
+        ),
+      }));
+      return updateHomepage({ matcher: { ...form, rules } } as never);
+    },
     onSuccess: () => {
       toast.success("Saved — the homepage section is updated");
       qc.invalidateQueries({ queryKey: ["cms", "homepage"] });
@@ -82,24 +94,19 @@ function FindYourObjectEditor() {
   if (homepage.error) return <ErrorState error={homepage.error} onRetry={() => homepage.refetch()} />;
 
   const items = products.data ?? [];
-  const set = <K extends keyof MatcherConfig>(key: K, value: MatcherConfig[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
 
-  function setQuestion(g: MatcherGroup, patch: { title?: string; option?: [string, string] }) {
-    setForm((f) => ({
-      ...f,
-      questions: {
-        ...f.questions,
-        [g]: {
-          title: patch.title ?? f.questions[g].title,
-          options: patch.option
-            ? { ...f.questions[g].options, [patch.option[0]]: patch.option[1] }
-            : f.questions[g].options,
-        },
-      },
-    }));
+  function setQuestion(i: number, patch: Partial<MatcherQuestion>) {
+    setForm((f) => ({ ...f, questions: f.questions.map((q, j) => (j === i ? { ...q, ...patch } : q)) }));
   }
-
+  function moveQuestion(i: number, dir: -1 | 1) {
+    setForm((f) => {
+      const qs = [...f.questions];
+      const j = i + dir;
+      if (j < 0 || j >= qs.length) return f;
+      [qs[i], qs[j]] = [qs[j]!, qs[i]!];
+      return { ...f, questions: qs };
+    });
+  }
   function setRule(i: number, patch: Partial<MatcherRule>) {
     setForm((f) => ({ ...f, rules: f.rules.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   }
@@ -134,7 +141,7 @@ function FindYourObjectEditor() {
       <PageHeader
         eyebrow="Content"
         title="Find Your Object"
-        description='The "What are you moving toward?" guided match on the homepage: edit its text, the three questions, and which product gets recommended for which answers.'
+        description='The "What are you moving toward?" guided match on the homepage: edit its questions and answers, and choose which product gets recommended for which answers.'
         actions={
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? "Saving…" : "Save changes"}
@@ -142,63 +149,99 @@ function FindYourObjectEditor() {
         }
       />
 
-      <Section title="Section text" hint="The heading area above the quiz.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Small heading</Label>
-            <Input value={form.eyebrow} onChange={(e) => set("eyebrow", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Tag line</Label>
-            <Input value={form.label} onChange={(e) => set("label", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Big heading — line 1</Label>
-            <Input value={form.heading_1} onChange={(e) => set("heading_1", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Big heading — line 2</Label>
-            <Input value={form.heading_2} onChange={(e) => set("heading_2", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Highlighted word</Label>
-            <Input
-              value={form.heading_accent}
-              onChange={(e) => set("heading_accent", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label>Description</Label>
-            <Textarea
-              rows={3}
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-            />
-          </div>
-        </div>
-      </Section>
-
       <Section
         title="Questions"
-        hint="Edit the wording of each question and its three answers. The answers themselves stay in the same order."
+        hint="Add as many questions as you like, each with its own answers. Rename, reorder or remove any of them."
       >
-        <div className="grid gap-4 lg:grid-cols-3">
-          {GROUPS.map((g, i) => (
-            <div key={g} className="space-y-3 rounded-md border border-border p-4">
-              <p className="text-xs text-muted-foreground">Question {i + 1}</p>
-              <Input
-                value={form.questions[g].title}
-                onChange={(e) => setQuestion(g, { title: e.target.value })}
-              />
-              {MATCHER_OPTION_KEYS[g].map((key) => (
+        <div className="space-y-4">
+          {form.questions.map((q, i) => (
+            <div key={q.id} className="space-y-3 rounded-md border border-border p-4">
+              <div className="flex items-center gap-2">
+                <span className="w-16 shrink-0 text-xs text-muted-foreground">Question {i + 1}</span>
                 <Input
-                  key={key}
-                  value={form.questions[g].options[key] ?? ""}
-                  onChange={(e) => setQuestion(g, { option: [key, e.target.value] })}
+                  placeholder="e.g. Where are you headed?"
+                  value={q.title}
+                  onChange={(e) => setQuestion(i, { title: e.target.value })}
                 />
-              ))}
+                <Button type="button" size="icon" variant="ghost" onClick={() => moveQuestion(i, -1)} aria-label="Move up">
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button type="button" size="icon" variant="ghost" onClick={() => moveQuestion(i, 1)} aria-label="Move down">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  disabled={form.questions.length <= 1}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, questions: f.questions.filter((_, j) => j !== i) }))
+                  }
+                >
+                  Delete question
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {q.options.map((o, k) => (
+                  <div key={o.value} className="flex items-center gap-1">
+                    <Input
+                      placeholder="Answer"
+                      value={o.label}
+                      onChange={(e) =>
+                        setQuestion(i, {
+                          options: q.options.map((x, j) => (j === k ? { ...x, label: e.target.value } : x)),
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      disabled={q.options.length <= 2}
+                      onClick={() => setQuestion(i, { options: q.options.filter((_, j) => j !== k) })}
+                      aria-label="Remove answer"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setQuestion(i, { options: [...q.options, { value: newId("opt"), label: "" }] })
+                }
+              >
+                Add answer
+              </Button>
             </div>
           ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setForm((f) => ({
+                ...f,
+                questions: [
+                  ...f.questions,
+                  {
+                    id: newId("q"),
+                    title: "",
+                    options: [
+                      { value: newId("opt"), label: "" },
+                      { value: newId("opt"), label: "" },
+                    ],
+                  },
+                ],
+              }))
+            }
+          >
+            Add question
+          </Button>
         </div>
       </Section>
 
@@ -213,26 +256,25 @@ function FindYourObjectEditor() {
             </p>
           )}
           {form.rules.map((r, i) => (
-            <div
-              key={i}
-              className="space-y-3 rounded-md border border-border p-4"
-            >
+            <div key={i} className="space-y-3 rounded-md border border-border p-4">
               <div className="flex flex-wrap items-end gap-3">
-                {GROUPS.map((g) => (
-                  <div key={g} className="space-y-1">
-                    <Label className="text-xs">{form.questions[g].title}</Label>
+                {form.questions.map((q) => (
+                  <div key={q.id} className="space-y-1">
+                    <Label className="text-xs">{q.title || "Untitled question"}</Label>
                     <Select
-                      value={r[g] || ANY}
-                      onValueChange={(v) => setRule(i, { [g]: v === ANY ? "" : v })}
+                      value={r.conditions[q.id] || ANY}
+                      onValueChange={(v) =>
+                        setRule(i, { conditions: { ...r.conditions, [q.id]: v === ANY ? "" : v } })
+                      }
                     >
                       <SelectTrigger className="h-9 w-36">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={ANY}>Any</SelectItem>
-                        {MATCHER_OPTION_KEYS[g].map((key) => (
-                          <SelectItem key={key} value={key}>
-                            {form.questions[g].options[key]}
+                        {q.options.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label || "Untitled answer"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -275,7 +317,7 @@ function FindYourObjectEditor() {
             onClick={() =>
               setForm((f) => ({
                 ...f,
-                rules: [...f.rules, { duration: "", mode: "", mood: "", product_id: "", reason: "" }],
+                rules: [...f.rules, { conditions: {}, product_id: "", reason: "" }],
               }))
             }
           >
@@ -285,7 +327,7 @@ function FindYourObjectEditor() {
 
         <div className="space-y-2 border-t border-border pt-4">
           <Label>Default product (when no rule matches)</Label>
-          {productSelect(form.default_product_id, (v) => set("default_product_id", v))}
+          {productSelect(form.default_product_id, (v) => setForm((f) => ({ ...f, default_product_id: v })))}
         </div>
       </Section>
     </div>
