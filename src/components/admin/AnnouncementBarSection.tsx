@@ -26,8 +26,6 @@ import {
 type Draft = {
   id: string | null;
   message: string;
-  link_text: string;
-  link_url: string;
   start_at: string; // datetime-local value, "" = no start
   end_at: string; // datetime-local value, "" = no end
   is_active: boolean;
@@ -36,8 +34,6 @@ type Draft = {
 const fromRow = (a: AnnouncementBar): Draft => ({
   id: a.id,
   message: a.message,
-  link_text: a.link_text ?? "",
-  link_url: a.link_url ?? "",
   start_at: a.start_at ? toLocalInput(a.start_at) : "",
   end_at: a.end_at ? toLocalInput(a.end_at) : "",
   is_active: a.is_active,
@@ -81,8 +77,8 @@ export function AnnouncementBarSection() {
       if (!message) throw new Error("Write the message first.");
       const payload = {
         message,
-        link_text: d.link_text.trim() || null,
-        link_url: d.link_url.trim() || null,
+        link_text: null,
+        link_url: null,
         start_at: d.start_at ? new Date(d.start_at).toISOString() : null,
         end_at: d.end_at ? new Date(d.end_at).toISOString() : null,
         is_active: d.is_active,
@@ -138,8 +134,6 @@ export function AnnouncementBarSection() {
       {
         id: null,
         message: couponMessage(c),
-        link_text: "",
-        link_url: "",
         start_at: "",
         end_at: c.expires_at ? toLocalInput(c.expires_at) : "",
         is_active: true,
@@ -150,6 +144,44 @@ export function AnnouncementBarSection() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            setAdded((a) => [
+              ...a,
+              {
+                id: null,
+                message: "",
+                start_at: "",
+                end_at: "",
+                is_active: true,
+              },
+            ])
+          }
+        >
+          Add message
+        </Button>
+        <span className="text-xs text-muted-foreground">or promote a coupon:</span>
+        <Select value={couponId} onValueChange={setCouponId}>
+          <SelectTrigger className="h-8 w-56 text-xs">
+            <SelectValue placeholder={activeCoupons.length ? "Choose a coupon…" : "No active coupons"} />
+          </SelectTrigger>
+          <SelectContent>
+            {activeCoupons.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.code} — {c.type === "percent" ? `${Number(c.value)}%` : money(Number(c.value))} off
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="button" size="sm" disabled={!couponId} onClick={promoteCoupon}>
+          Use coupon
+        </Button>
+      </div>
+
       {bars.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
@@ -170,24 +202,6 @@ export function AnnouncementBarSection() {
                     value={d.message}
                     onChange={(e) => patch(d, { message: e.target.value })}
                   />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Link text (optional)</Label>
-                    <Input
-                      placeholder="Shop now"
-                      value={d.link_text}
-                      onChange={(e) => patch(d, { link_text: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Link address (optional)</Label>
-                    <Input
-                      placeholder="/shop.html"
-                      value={d.link_url}
-                      onChange={(e) => patch(d, { link_url: e.target.value })}
-                    />
-                  </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -250,45 +264,6 @@ export function AnnouncementBarSection() {
         </ul>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            setAdded((a) => [
-              ...a,
-              {
-                id: null,
-                message: "",
-                link_text: "",
-                link_url: "",
-                start_at: "",
-                end_at: "",
-                is_active: true,
-              },
-            ])
-          }
-        >
-          Add message
-        </Button>
-        <span className="text-xs text-muted-foreground">or promote a coupon:</span>
-        <Select value={couponId} onValueChange={setCouponId}>
-          <SelectTrigger className="h-8 w-56 text-xs">
-            <SelectValue placeholder={activeCoupons.length ? "Choose a coupon…" : "No active coupons"} />
-          </SelectTrigger>
-          <SelectContent>
-            {activeCoupons.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.code} — {c.type === "percent" ? `${Number(c.value)}%` : money(Number(c.value))} off
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button type="button" size="sm" disabled={!couponId} onClick={promoteCoupon}>
-          Use coupon
-        </Button>
-      </div>
     </div>
   );
 }
