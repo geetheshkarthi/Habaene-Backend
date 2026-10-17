@@ -82,6 +82,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: FileText,
     items: [
       { to: "/admin/cms/homepage", label: "Homepage" },
+      { to: "/admin/cms/announcements", label: "Announcement" },
       { to: "/admin/cms/journal", label: "Journal" },
       { to: "/admin/cms/faq", label: "FAQ" },
     ],

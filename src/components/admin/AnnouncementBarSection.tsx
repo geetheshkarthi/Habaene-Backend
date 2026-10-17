@@ -28,6 +28,8 @@ type Draft = {
   message: string;
   link_text: string;
   link_url: string;
+  start_at: string; // datetime-local value, "" = no start
+  end_at: string; // datetime-local value, "" = no end
   is_active: boolean;
 };
 
@@ -36,8 +38,17 @@ const fromRow = (a: AnnouncementBar): Draft => ({
   message: a.message,
   link_text: a.link_text ?? "",
   link_url: a.link_url ?? "",
+  start_at: a.start_at ? toLocalInput(a.start_at) : "",
+  end_at: a.end_at ? toLocalInput(a.end_at) : "",
   is_active: a.is_active,
 });
+
+/** ISO timestamp -> value for <input type="datetime-local"> in the viewer's timezone. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 /** "10% OFF — CODE WELCOME10", optionally followed by the coupon's description. */
 function couponMessage(c: DiscountCode): string {
@@ -72,6 +83,8 @@ export function AnnouncementBarSection() {
         message,
         link_text: d.link_text.trim() || null,
         link_url: d.link_url.trim() || null,
+        start_at: d.start_at ? new Date(d.start_at).toISOString() : null,
+        end_at: d.end_at ? new Date(d.end_at).toISOString() : null,
         is_active: d.is_active,
       };
       if (d.id) return updateAnnouncementBar(d.id, payload);
@@ -122,7 +135,15 @@ export function AnnouncementBarSection() {
     if (!c) return;
     setAdded((a) => [
       ...a,
-      { id: null, message: couponMessage(c), link_text: "", link_url: "", is_active: true },
+      {
+        id: null,
+        message: couponMessage(c),
+        link_text: "",
+        link_url: "",
+        start_at: "",
+        end_at: c.expires_at ? toLocalInput(c.expires_at) : "",
+        is_active: true,
+      },
     ]);
     setCouponId("");
   }
@@ -165,6 +186,24 @@ export function AnnouncementBarSection() {
                       placeholder="/shop.html"
                       value={d.link_url}
                       onChange={(e) => patch(d, { link_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Show from (optional)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={d.start_at}
+                      onChange={(e) => patch(d, { start_at: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Show until (optional)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={d.end_at}
+                      onChange={(e) => patch(d, { end_at: e.target.value })}
                     />
                   </div>
                 </div>
@@ -219,7 +258,15 @@ export function AnnouncementBarSection() {
           onClick={() =>
             setAdded((a) => [
               ...a,
-              { id: null, message: "", link_text: "", link_url: "", is_active: true },
+              {
+                id: null,
+                message: "",
+                link_text: "",
+                link_url: "",
+                start_at: "",
+                end_at: "",
+                is_active: true,
+              },
             ])
           }
         >
