@@ -45,6 +45,8 @@ export interface CmsHomepage {
   hero_video_url: string | null;
   hero_slides: HeroSlide[];
   homepage_reviews_count: number;
+  /** "What are you moving toward?" section — see lib/api/matcher.ts */
+  matcher?: unknown;
   featured_product_ids: string[];
   featured_collection_ids: string[];
   promotional_sections: unknown[];

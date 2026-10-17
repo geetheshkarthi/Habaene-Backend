@@ -1094,7 +1094,7 @@ export async function getFaqItems(url: URL) {
 export async function getPublicHomepage() {
   const { data, error } = await db
     .from("cms_homepage")
-    .select("hero_slides, featured_product_ids, homepage_reviews_count")
+    .select("*")
     .eq("singleton", true)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -1120,6 +1120,8 @@ export async function getPublicHomepage() {
     hero_slides: data?.hero_slides ?? [],
     reviews_count: data?.homepage_reviews_count ?? 8,
     featured_products,
+    // Editable in the admin under Content → Find Your Object (null until saved).
+    matcher: (data as { matcher?: unknown } | null)?.matcher ?? null,
   };
 }
 

@@ -83,6 +83,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/cms/homepage", label: "Homepage" },
       { to: "/admin/cms/announcements", label: "Announcement" },
+      { to: "/admin/cms/find-your-object", label: "Find Your Object" },
       { to: "/admin/cms/journal", label: "Journal" },
       { to: "/admin/cms/faq", label: "FAQ" },
     ],

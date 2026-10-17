@@ -58,6 +58,7 @@ import { Route as AuthenticatedAdminAnalyticsReportsRouteImport } from './routes
 import { Route as AuthenticatedAdminAnalyticsSalesRouteImport } from './routes/_authenticated/admin/analytics/sales'
 import { Route as AuthenticatedAdminCmsAnnouncementsRouteImport } from './routes/_authenticated/admin/cms/announcements'
 import { Route as AuthenticatedAdminCmsFaqRouteImport } from './routes/_authenticated/admin/cms/faq'
+import { Route as AuthenticatedAdminCmsFindYourObjectRouteImport } from './routes/_authenticated/admin/cms/find-your-object'
 import { Route as AuthenticatedAdminCmsHomepageRouteImport } from './routes/_authenticated/admin/cms/homepage'
 import { Route as AuthenticatedAdminCmsJournalRouteImport } from './routes/_authenticated/admin/cms/journal'
 import { Route as AuthenticatedAdminCmsMediaRouteImport } from './routes/_authenticated/admin/cms/media'
@@ -348,6 +349,12 @@ const AuthenticatedAdminCmsFaqRoute =
     path: '/cms/faq',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminCmsFindYourObjectRoute =
+  AuthenticatedAdminCmsFindYourObjectRouteImport.update({
+    id: '/cms/find-your-object',
+    path: '/cms/find-your-object',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminCmsHomepageRoute =
   AuthenticatedAdminCmsHomepageRouteImport.update({
     id: '/cms/homepage',
@@ -450,6 +457,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics/sales': typeof AuthenticatedAdminAnalyticsSalesRoute
   '/admin/cms/announcements': typeof AuthenticatedAdminCmsAnnouncementsRoute
   '/admin/cms/faq': typeof AuthenticatedAdminCmsFaqRoute
+  '/admin/cms/find-your-object': typeof AuthenticatedAdminCmsFindYourObjectRoute
   '/admin/cms/homepage': typeof AuthenticatedAdminCmsHomepageRoute
   '/admin/cms/journal': typeof AuthenticatedAdminCmsJournalRoute
   '/admin/cms/media': typeof AuthenticatedAdminCmsMediaRoute
@@ -508,6 +516,7 @@ export interface FileRoutesByTo {
   '/admin/analytics/sales': typeof AuthenticatedAdminAnalyticsSalesRoute
   '/admin/cms/announcements': typeof AuthenticatedAdminCmsAnnouncementsRoute
   '/admin/cms/faq': typeof AuthenticatedAdminCmsFaqRoute
+  '/admin/cms/find-your-object': typeof AuthenticatedAdminCmsFindYourObjectRoute
   '/admin/cms/homepage': typeof AuthenticatedAdminCmsHomepageRoute
   '/admin/cms/journal': typeof AuthenticatedAdminCmsJournalRoute
   '/admin/cms/media': typeof AuthenticatedAdminCmsMediaRoute
@@ -569,6 +578,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/analytics/sales': typeof AuthenticatedAdminAnalyticsSalesRoute
   '/_authenticated/admin/cms/announcements': typeof AuthenticatedAdminCmsAnnouncementsRoute
   '/_authenticated/admin/cms/faq': typeof AuthenticatedAdminCmsFaqRoute
+  '/_authenticated/admin/cms/find-your-object': typeof AuthenticatedAdminCmsFindYourObjectRoute
   '/_authenticated/admin/cms/homepage': typeof AuthenticatedAdminCmsHomepageRoute
   '/_authenticated/admin/cms/journal': typeof AuthenticatedAdminCmsJournalRoute
   '/_authenticated/admin/cms/media': typeof AuthenticatedAdminCmsMediaRoute
@@ -630,6 +640,7 @@ export interface FileRouteTypes {
     | '/admin/analytics/sales'
     | '/admin/cms/announcements'
     | '/admin/cms/faq'
+    | '/admin/cms/find-your-object'
     | '/admin/cms/homepage'
     | '/admin/cms/journal'
     | '/admin/cms/media'
@@ -688,6 +699,7 @@ export interface FileRouteTypes {
     | '/admin/analytics/sales'
     | '/admin/cms/announcements'
     | '/admin/cms/faq'
+    | '/admin/cms/find-your-object'
     | '/admin/cms/homepage'
     | '/admin/cms/journal'
     | '/admin/cms/media'
@@ -748,6 +760,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/analytics/sales'
     | '/_authenticated/admin/cms/announcements'
     | '/_authenticated/admin/cms/faq'
+    | '/_authenticated/admin/cms/find-your-object'
     | '/_authenticated/admin/cms/homepage'
     | '/_authenticated/admin/cms/journal'
     | '/_authenticated/admin/cms/media'
@@ -1120,6 +1133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCmsFaqRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/cms/find-your-object': {
+      id: '/_authenticated/admin/cms/find-your-object'
+      path: '/cms/find-your-object'
+      fullPath: '/admin/cms/find-your-object'
+      preLoaderRoute: typeof AuthenticatedAdminCmsFindYourObjectRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/cms/homepage': {
       id: '/_authenticated/admin/cms/homepage'
       path: '/cms/homepage'
@@ -1223,6 +1243,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminAnalyticsSalesRoute: typeof AuthenticatedAdminAnalyticsSalesRoute
   AuthenticatedAdminCmsAnnouncementsRoute: typeof AuthenticatedAdminCmsAnnouncementsRoute
   AuthenticatedAdminCmsFaqRoute: typeof AuthenticatedAdminCmsFaqRoute
+  AuthenticatedAdminCmsFindYourObjectRoute: typeof AuthenticatedAdminCmsFindYourObjectRoute
   AuthenticatedAdminCmsHomepageRoute: typeof AuthenticatedAdminCmsHomepageRoute
   AuthenticatedAdminCmsJournalRoute: typeof AuthenticatedAdminCmsJournalRoute
   AuthenticatedAdminCmsMediaRoute: typeof AuthenticatedAdminCmsMediaRoute
@@ -1284,6 +1305,8 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminCmsAnnouncementsRoute:
       AuthenticatedAdminCmsAnnouncementsRoute,
     AuthenticatedAdminCmsFaqRoute: AuthenticatedAdminCmsFaqRoute,
+    AuthenticatedAdminCmsFindYourObjectRoute:
+      AuthenticatedAdminCmsFindYourObjectRoute,
     AuthenticatedAdminCmsHomepageRoute: AuthenticatedAdminCmsHomepageRoute,
     AuthenticatedAdminCmsJournalRoute: AuthenticatedAdminCmsJournalRoute,
     AuthenticatedAdminCmsMediaRoute: AuthenticatedAdminCmsMediaRoute,
