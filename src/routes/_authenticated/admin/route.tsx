@@ -191,8 +191,8 @@ function AdminLayout() {
         <div className="px-4 py-5 border-b border-sidebar-border">
           <Link to="/admin" className="inline-flex flex-col gap-2 text-sidebar-foreground" aria-label="HABÄNE admin console">
             <span className="flex items-center gap-2.5">
-              <img src="/brand/icon-white.png" alt="" className="h-[22px] w-auto" />
-              <img src="/brand/wordmark-white.png" alt="HABÄNE" className="h-[13px] w-auto" />
+              <img src="/brand/icon-navy.png" alt="" className="h-[22px] w-auto" />
+              <img src="/brand/wordmark-navy.png" alt="HABÄNE" className="h-[13px] w-auto" />
             </span>
             <span className="block text-[10px] tracking-[0.2em] text-sidebar-foreground/50 uppercase">
               Admin console
