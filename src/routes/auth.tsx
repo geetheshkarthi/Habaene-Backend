@@ -6,12 +6,13 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthEventFn } from "@/lib/logging.functions";
+import { loginIdToEmail } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const schema = z.object({
-  email: z.string().trim().email("Enter a valid email").max(255),
+  email: z.string().trim().min(2, "Enter your email or User ID").max(255),
   password: z.string().min(8, "At least 8 characters").max(200),
 });
 
@@ -47,6 +48,10 @@ function AuthPage() {
   async function sendReset(e: React.FormEvent) {
     e.preventDefault();
     const email = resetEmail.trim();
+    if (!email.includes("@")) {
+      toast.error("Password reset emails need an email address. If you sign in with a User ID, ask your administrator to change your password.");
+      return;
+    }
     if (!z.string().email().safeParse(email).success) {
       toast.error("Enter a valid email");
       return;
@@ -67,7 +72,7 @@ function AuthPage() {
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
     const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
+      email: loginIdToEmail(values.email),
       password: values.password,
     });
     setSubmitting(false);
@@ -148,8 +153,8 @@ function AuthPage() {
 
           <form hidden={forgot} onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+              <Label htmlFor="email">Email or User ID</Label>
+              <Input id="email" type="text" autoComplete="username" {...form.register("email")} />
               {form.formState.errors.email && (
                 <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
               )}

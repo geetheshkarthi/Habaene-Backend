@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Package,
@@ -19,20 +19,65 @@ import {
   Shield,
   Eye,
 } from "lucide-react";
-import { useState } from "react";
-import { useIsAdmin, signOut } from "@/hooks/useAdmin";
+import { useEffect, useState } from "react";
+import { useIsAdmin, usePermissions, signOut } from "@/hooks/useAdmin";
+import { emailToLoginId } from "@/lib/permissions";
 import { LoadingState } from "@/components/admin/DataStates";
 import { Button } from "@/components/ui/button";
 
+/**
+ * perm: a permission key from lib/permissions.ts, or
+ *   "self"  — everyone who can open the dashboard
+ *   "super" — main administrators only
+ */
+type NavItem = { to: string; label: string; perm?: string };
 type NavGroup = {
   label: string;
+  perm: string;
   icon: React.ComponentType<{ className?: string }>;
-  items: { to: string; label: string }[];
+  items: NavItem[];
 };
+
+const GROUP_PERMS: Record<string, string> = {
+  Analytics: "analytics",
+  "Products & Inventory": "catalogue",
+  "Orders & Operations": "orders",
+  Customers: "customers",
+  Marketing: "marketing",
+  Content: "content",
+  "Visitor Insights": "insights",
+  SEO: "seo",
+  Administration: "self",
+  Inbox: "inbox",
+};
+
+function itemAllowed(permissions: string[] | undefined, perm: string): boolean {
+  if (!permissions) return false;
+  if (perm === "self") return true;
+  if (permissions.includes("*")) return true;
+  if (perm === "super") return false;
+  return permissions.includes(perm);
+}
+
+/** Which permission a dashboard URL needs. Unknown URLs are main-administrator only. */
+function requiredPermFor(pathname: string): string {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/admin") return "dashboard";
+  let best: { len: number; perm: string } | null = null;
+  for (const g of NAV_GROUPS) {
+    for (const it of g.items) {
+      if ((path === it.to || path.startsWith(it.to + "/")) && (!best || it.to.length > best.len)) {
+        best = { len: it.to.length, perm: it.perm ?? g.perm };
+      }
+    }
+  }
+  return best?.perm ?? "super";
+}
 
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Analytics",
+    perm: GROUP_PERMS["Analytics"]!,
     icon: BarChart3,
     items: [
       { to: "/admin/analytics", label: "Overview" },
@@ -47,6 +92,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Products & Inventory",
+    perm: GROUP_PERMS["Products & Inventory"]!,
     icon: Package,
     items: [
       { to: "/admin/products", label: "Products" },
@@ -55,6 +101,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Orders & Operations",
+    perm: GROUP_PERMS["Orders & Operations"]!,
     icon: ShoppingBag,
     items: [
       { to: "/admin/orders", label: "Orders" },
@@ -64,6 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Customers",
+    perm: GROUP_PERMS["Customers"]!,
     icon: Users,
     items: [
       { to: "/admin/customers", label: "All Customers" },
@@ -72,6 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Marketing",
+    perm: GROUP_PERMS["Marketing"]!,
     icon: Megaphone,
     items: [
       { to: "/admin/discounts", label: "Coupons" },
@@ -80,6 +129,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Content",
+    perm: GROUP_PERMS["Content"]!,
     icon: FileText,
     items: [
       { to: "/admin/cms/homepage", label: "Homepage" },
@@ -91,6 +141,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Visitor Insights",
+    perm: GROUP_PERMS["Visitor Insights"]!,
     icon: Eye,
     items: [
       { to: "/admin/insights/products", label: "Product Interest" },
@@ -100,6 +151,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "SEO",
+    perm: GROUP_PERMS["SEO"]!,
     icon: Search,
     items: [
       { to: "/admin/seo", label: "SEO Dashboard" },
@@ -109,14 +161,16 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Administration",
+    perm: GROUP_PERMS["Administration"]!,
     icon: Shield,
     items: [
-      { to: "/admin/team", label: "Admin Roles" },
+      { to: "/admin/team", label: "Admin Roles", perm: "super" },
       { to: "/admin/change-password", label: "Passwords" },
     ],
   },
   {
     label: "Inbox",
+    perm: GROUP_PERMS["Inbox"]!,
     icon: MessageSquare,
     items: [{ to: "/admin/messages", label: "Contact Messages" }],
   },
@@ -160,9 +214,28 @@ function NavGroupItem({ group }: { group: NavGroup }) {
 
 function AdminLayout() {
   const { user, isAdmin, loading } = useIsAdmin();
+  const permsQuery = usePermissions(isAdmin);
+  const perms = permsQuery.data;
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
 
-  if (loading) return <LoadingState label="Checking access…" />;
+  const visibleGroups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => itemAllowed(perms, it.perm ?? g.perm)),
+  })).filter((g) => g.items.length > 0);
+  const canDashboard = itemAllowed(perms, "dashboard");
+  const required = requiredPermFor(pathname);
+  const allowedHere = itemAllowed(perms, required);
+  const firstAllowed = visibleGroups.flatMap((g) => g.items)[0];
+
+  // Staff without the dashboard permission land on their first allowed page.
+  useEffect(() => {
+    if (perms && pathname.replace(/\/+$/, "") === "/admin" && !canDashboard && firstAllowed) {
+      navigate({ to: firstAllowed.to });
+    }
+  }, [perms, pathname, canDashboard, firstAllowed, navigate]);
+
+  if (loading || (isAdmin && permsQuery.isLoading)) return <LoadingState label="Checking access…" />;
 
   if (!isAdmin) {
     return (
@@ -201,21 +274,23 @@ function AdminLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          <Link
-            to="/admin"
-            activeOptions={{ exact: true }}
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground mb-2"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Dashboard
-          </Link>
-          {NAV_GROUPS.map((group) => (
+          {canDashboard && (
+            <Link
+              to="/admin"
+              activeOptions={{ exact: true }}
+              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground mb-2"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Link>
+          )}
+          {visibleGroups.map((group) => (
             <NavGroupItem key={group.label} group={group} />
           ))}
         </nav>
 
         <div className="border-t border-sidebar-border px-4 py-4">
-          <p className="truncate px-1 text-xs text-sidebar-foreground/60">{user?.email}</p>
+          <p className="truncate px-1 text-xs text-sidebar-foreground/60">{emailToLoginId(user?.email)}</p>
           <button
             onClick={async () => {
               await signOut();
@@ -232,33 +307,40 @@ function AdminLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile nav */}
         <nav className="flex gap-1 overflow-x-auto border-b border-border bg-sidebar px-4 py-2 md:hidden">
-          <Link
-            to="/admin"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/admin/orders"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
-          >
-            Orders
-          </Link>
-          <Link
-            to="/admin/products"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
-          >
-            Products
-          </Link>
-          <Link
-            to="/admin/customers"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
-          >
-            Customers
-          </Link>
+          {[
+            { to: "/admin", label: "Dashboard", perm: "dashboard" },
+            { to: "/admin/orders", label: "Orders", perm: "orders" },
+            { to: "/admin/products", label: "Products", perm: "catalogue" },
+            { to: "/admin/customers", label: "Customers", perm: "customers" },
+          ]
+            .filter((l) => itemAllowed(perms, l.perm))
+            .map((l) => (
+              <Link
+                key={l.to}
+                to={l.to}
+                className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
+              >
+                {l.label}
+              </Link>
+            ))}
         </nav>
         <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-10">
-          <Outlet />
+          {allowedHere ? (
+            <Outlet />
+          ) : (
+            <div className="mx-auto max-w-md space-y-3 py-24 text-center">
+              <span className="eyebrow text-muted-foreground">No access</span>
+              <h1 className="text-2xl">Your role can't open this page</h1>
+              <p className="text-sm text-muted-foreground">
+                Ask a main administrator to add this section to your role.
+              </p>
+              {firstAllowed && (
+                <Button asChild variant="outline">
+                  <Link to={firstAllowed.to}>Go to {firstAllowed.label}</Link>
+                </Button>
+              )}
+            </div>
+          )}
         </main>
       </div>
     </div>

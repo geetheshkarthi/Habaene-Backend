@@ -847,6 +847,8 @@ export type Database = {
         Returns: boolean;
       };
       is_admin: { Args: never; Returns: boolean };
+      is_super_admin: { Args: never; Returns: boolean };
+      my_permissions: { Args: never; Returns: string[] };
       list_product_categories: { Args: never; Returns: string[] };
       add_product_category: { Args: { p_name: string }; Returns: string };
     };

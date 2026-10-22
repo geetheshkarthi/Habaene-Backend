@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyPermissions } from "@/lib/api/staff";
 
 export function useCurrentUser() {
   const [user, setUser] = useState<User | null>(null);
@@ -49,6 +50,16 @@ export function useIsAdmin() {
     loading: loading || (!!user && query.isLoading),
     error: query.error,
   };
+}
+
+/** What the signed-in user may open: ["*"] for main administrators, else their role's list. */
+export function usePermissions(enabled = true) {
+  const { user } = useCurrentUser();
+  return useQuery({
+    queryKey: ["my-permissions", user?.id],
+    enabled: enabled && !!user,
+    queryFn: getMyPermissions,
+  });
 }
 
 export async function signOut() {
