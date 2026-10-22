@@ -2,10 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getAuditTrail, type AuditTrailEntry } from "@/lib/api/admin";
-import { dateTime, toCsv, downloadFile } from "@/lib/format";
+import { dateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/admin/audit-log")({
@@ -59,32 +58,6 @@ function AuditLogPage() {
         eyebrow="Administration"
         title="Audit Log"
         description="Who changed what, when, and what the value was before and after."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() =>
-              downloadFile(
-                "audit-log.csv",
-                toCsv(
-                  rows.map((r) => ({
-                    when: r.created_at,
-                    who: r.changed_by_email ?? r.changed_by ?? "system",
-                    role: r.changed_by_role ?? "",
-                    action: r.action,
-                    table: r.table_name,
-                    record: r.record_id ?? "",
-                    module: r.module ?? "",
-                    change: diffSummary(r),
-                  })),
-                ),
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <div className="flex flex-wrap gap-3">

@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getSearchAnalytics } from "@/lib/api/seo";
-import { toCsv, downloadFile } from "@/lib/format";
+import { downloadFile } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, Section, DateRangePicker } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/seo/search-analytics")({
   head: () => ({ meta: [{ title: "Search Analytics — HABÄNE Admin" }] }),
@@ -35,16 +34,6 @@ function SearchAnalyticsPage() {
         eyebrow="SEO"
         title="Search Analytics"
         description="What people type into the storefront search, and whether it leads anywhere."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() => downloadFile("search-analytics.csv", toCsv(rows))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

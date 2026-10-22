@@ -9,7 +9,7 @@ import {
   deleteRedirect,
   type Redirect,
 } from "@/lib/api/seo";
-import { dateShort, toCsv, downloadFile } from "@/lib/format";
+import { dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard } from "@/components/admin/AnalyticsKit";
@@ -89,16 +89,6 @@ function RedirectsPage() {
         eyebrow="SEO"
         title="Redirects"
         description="Map retired URLs to their replacements so links and rankings survive."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!all.length}
-            onClick={() => downloadFile("redirects.csv", toCsv(all))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

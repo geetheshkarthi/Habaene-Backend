@@ -21,7 +21,7 @@ import {
 import { uploadProductImage, deleteProductImage, getImageUrls } from "@/lib/api/storage";
 import { type Product, type ProductInsert } from "@/lib/api/types";
 import { CategorySelect } from "@/components/admin/CategorySelect";
-import { money, slugify, num, toCsv, downloadFile } from "@/lib/format";
+import { money, slugify, num } from "@/lib/format";
 import { imageUrl } from "@/lib/config";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { SongPicker, type Song } from "@/components/admin/SongPicker";
@@ -368,24 +368,6 @@ function InventoryPage() {
     setAdjustReason("");
   }
 
-  function exportCsv() {
-    const rows = (allItems.data ?? []).map((r) => ({
-      code: r.code,
-      name: r.name,
-      category: r.category,
-      available: r.stock,
-      damaged_returned: r.damaged_returned,
-      incoming: r.incoming,
-      cost_price: r.cost_price,
-      inventory_value: r.inventory_value,
-    }));
-    if (rows.length === 0) {
-      toast.error("Nothing to export");
-      return;
-    }
-    downloadFile(`habaene-inventory-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows));
-  }
-
   const items = allItems.data ?? [];
   const outOfStockCount = items.filter((r) => r.stock === 0).length;
   const lowStockCount = items.filter((r) => r.stock > 0 && r.stock < LOW_STOCK_THRESHOLD).length;
@@ -400,9 +382,6 @@ function InventoryPage() {
         description="Create and maintain every item here — cost, stock, images and full storefront content. Push an item to Products when it's ready for pricing; going live on the website is set there."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={exportCsv}>
-              Export CSV
-            </Button>
             <Button onClick={openCreate}>+ Add item</Button>
           </div>
         }

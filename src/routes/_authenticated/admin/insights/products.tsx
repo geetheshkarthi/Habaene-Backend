@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getProductInterest, fmtDuration } from "@/lib/api/insights";
-import { toCsv, downloadFile } from "@/lib/format";
+import { downloadFile } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section, StatCard } from "@/components/admin/AnalyticsKit";
 import { InsightBars } from "@/components/admin/InsightBars";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -61,16 +60,6 @@ function ProductInterest() {
         eyebrow="Visitor Insights"
         title="Product Interest"
         description="Which products customers look at, add to their bag and buy — and how long they spend on each product page."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() => downloadFile("product-interest.csv", toCsv(rows))}
-          >
-            Export CSV
-          </Button>
-        }
       />
       <DateRangePicker {...pickerProps} />
 

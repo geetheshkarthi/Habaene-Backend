@@ -12,12 +12,11 @@ import {
   YAxis,
 } from "recharts";
 import { getAllDaysOfWeekAnalytics, dayName } from "@/lib/api/analytics";
-import { money, dateShort, toCsv, downloadFile } from "@/lib/format";
+import { money, dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section, StatCard } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics/day-of-week")({
   head: () => ({ meta: [{ title: "Day-of-Week Analytics — HABÄNE Admin" }] }),
@@ -66,32 +65,6 @@ function DayOfWeekAnalyticsPage() {
         eyebrow="Analytics"
         title="Day-of-Week Analytics"
         description="Pick a weekday to see how it performs across every occurrence in the selected date range."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() =>
-              downloadFile(
-                "day-of-week-analytics.csv",
-                toCsv(
-                  DISPLAY_ORDER.map((d) => {
-                    const r = byDay.get(d);
-                    return {
-                      day: dayName(d),
-                      revenue: r?.revenue ?? 0,
-                      orders: r?.orders ?? 0,
-                      units_sold: r?.units_sold ?? 0,
-                      aov: r?.aov ?? 0,
-                    };
-                  }),
-                ),
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

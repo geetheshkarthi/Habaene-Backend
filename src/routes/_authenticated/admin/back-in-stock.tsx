@@ -2,11 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getBackInStockRequests } from "@/lib/api/inventory";
 import { getProducts } from "@/lib/api/products";
-import { dateShort, toCsv, downloadFile } from "@/lib/format";
+import { dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, Section } from "@/components/admin/AnalyticsKit";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/back-in-stock")({
   head: () => ({ meta: [{ title: "Back in Stock — HABÄNE Admin" }] }),
@@ -59,28 +58,6 @@ function BackInStockPage() {
         eyebrow="Marketing"
         title="Back in Stock"
         description="Customers who asked to be told when a sold-out product returns."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() =>
-              downloadFile(
-                "back-in-stock.csv",
-                toCsv(
-                  rows.map((r) => ({
-                    email: r.email,
-                    product: productById.get(r.product_id)?.name ?? r.product_id,
-                    variant: r.variant_id ?? "",
-                    requested: r.created_at,
-                  })),
-                ),
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       {requests.isLoading ? (

@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getAbandonedCarts, getAbandonedCartStats } from "@/lib/api/marketing";
-import { money, dateTime, toCsv, downloadFile } from "@/lib/format";
+import { money, dateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, DateRangePicker } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/abandoned-carts")({
   head: () => ({ meta: [{ title: "Abandoned Carts — HABÄNE Admin" }] }),
@@ -47,16 +46,6 @@ function AbandonedCartsPage() {
         eyebrow="Customers"
         title="Abandoned Carts"
         description="Carts and checkouts that were started but never completed."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() => downloadFile("abandoned-carts.csv", toCsv(rows))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

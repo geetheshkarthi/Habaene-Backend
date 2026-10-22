@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getFinancialAnalytics } from "@/lib/api/analytics";
-import { money, toCsv, downloadFile } from "@/lib/format";
+import { money } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section, StatCard } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics/financial")({
   head: () => ({ meta: [{ title: "Financial Analytics — HABÄNE Admin" }] }),
@@ -49,22 +48,6 @@ function FinancialAnalytics() {
         eyebrow="Analytics"
         title="Financial Analytics"
         description="Gross to net revenue, including discounts, tax and refunds."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!f}
-            onClick={() =>
-              f &&
-              downloadFile(
-                "financial-analytics.csv",
-                toCsv([f as unknown as Record<string, unknown>]),
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

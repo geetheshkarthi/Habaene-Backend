@@ -20,7 +20,7 @@ import {
   type Address,
   type StoreSettings,
 } from "@/lib/api/types";
-import { money, dateTime, dateShort, toCsv, downloadFile, num } from "@/lib/format";
+import { money, dateTime, dateShort, num } from "@/lib/format";
 import {
   createShipmentFn,
   refundOrderFn,
@@ -302,26 +302,6 @@ function OrdersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function exportCsv() {
-    const rows = (orders.data ?? []).map((o) => ({
-      order_number: o.order_number,
-      date: o.created_at,
-      customer: o.customer_name,
-      email: o.customer_email,
-      status: o.status,
-      payment_status: o.payment_status,
-      subtotal: num(o.subtotal),
-      shipping: num(o.shipping_cost),
-      vat: num(o.vat_amount),
-      total: num(o.total),
-    }));
-    if (rows.length === 0) {
-      toast.error("Nothing to export");
-      return;
-    }
-    downloadFile(`habaene-orders-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows));
-  }
-
   function openOrder(o: OrderWithItems) {
     setSelected(o);
     setTracking({ carrier: o.shipping_carrier ?? "", number: o.tracking_number ?? "" });
@@ -340,11 +320,6 @@ function OrdersPage() {
         eyebrow="Fulfilment"
         title="Orders"
         description="Invoice-relevant records. Orders are never hard-deleted."
-        actions={
-          <Button variant="outline" onClick={exportCsv}>
-            Export Orders CSV
-          </Button>
-        }
       />
 
       <div className="flex flex-wrap gap-2">

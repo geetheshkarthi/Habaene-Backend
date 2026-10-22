@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getRefunds, getRefundStats, type Refund } from "@/lib/api/refunds";
 import { getOrders } from "@/lib/api/orders";
 import { refundOrderFn } from "@/lib/commerce.functions";
-import { money, dateTime, toCsv, downloadFile } from "@/lib/format";
+import { money, dateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, DateRangePicker } from "@/components/admin/AnalyticsKit";
@@ -93,14 +93,6 @@ function RefundsPage() {
         description="Every refund issued against an order, full or partial."
         actions={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!rows.length}
-              onClick={() => downloadFile("refunds.csv", toCsv(rows))}
-            >
-              Export CSV
-            </Button>
             <Button size="sm" onClick={() => setOpen(true)}>
               Issue refund
             </Button>

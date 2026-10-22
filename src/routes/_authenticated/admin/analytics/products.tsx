@@ -2,12 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getProductAnalytics } from "@/lib/api/analytics";
 import { getProducts } from "@/lib/api/products";
-import { money, toCsv, downloadFile } from "@/lib/format";
+import { money } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section, StatCard } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics/products")({
   head: () => ({ meta: [{ title: "Product Analytics — HABÄNE Admin" }] }),
@@ -47,16 +46,6 @@ function ProductAnalytics() {
         eyebrow="Analytics"
         title="Product Analytics"
         description="Revenue, units, views and ratings per product."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() => downloadFile("product-analytics.csv", toCsv(rows))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

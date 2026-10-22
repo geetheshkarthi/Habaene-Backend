@@ -10,7 +10,7 @@ import {
   type Campaign,
   type CampaignStats,
 } from "@/lib/api/marketing";
-import { money, dateShort, toCsv, downloadFile } from "@/lib/format";
+import { money, dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, DateRangePicker } from "@/components/admin/AnalyticsKit";
@@ -159,29 +159,6 @@ function CampaignsPage() {
         description="UTM-tagged campaigns and the revenue attributed to them."
         actions={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!statRows.length}
-              onClick={() =>
-                downloadFile(
-                  "campaigns.csv",
-                  toCsv(
-                    statRows.map((s) => ({
-                      campaign: s.campaign.name,
-                      utm_source: s.campaign.utm_source ?? "",
-                      utm_medium: s.campaign.utm_medium ?? "",
-                      utm_campaign: s.campaign.utm_campaign ?? "",
-                      revenue: s.revenue,
-                      orders: s.orders,
-                      customers: s.customers,
-                    })),
-                  ),
-                )
-              }
-            >
-              Export CSV
-            </Button>
             <Button size="sm" onClick={openNew}>
               New campaign
             </Button>

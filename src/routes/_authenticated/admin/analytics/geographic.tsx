@@ -2,12 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getGeographicAnalytics } from "@/lib/api/analytics";
-import { money, toCsv, downloadFile } from "@/lib/format";
+import { money } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section, StatCard } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics/geographic")({
   head: () => ({ meta: [{ title: "Geographic Analytics — HABÄNE Admin" }] }),
@@ -45,16 +44,6 @@ function GeographicAnalytics() {
         eyebrow="Analytics"
         title="Geographic Analytics"
         description="Revenue, orders and customers by shipping country."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() => downloadFile("geographic-analytics.csv", toCsv(rows))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

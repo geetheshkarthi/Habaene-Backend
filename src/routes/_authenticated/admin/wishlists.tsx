@@ -2,11 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getWishlists, getWishlistByProduct } from "@/lib/api/marketing";
-import { dateShort, toCsv, downloadFile } from "@/lib/format";
+import { dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, Section } from "@/components/admin/AnalyticsKit";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/admin/wishlists")({
@@ -45,16 +44,6 @@ function WishlistsPage() {
         eyebrow="Customers"
         title="Wishlists"
         description="What customers saved but have not bought yet."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!all.length}
-            onClick={() => downloadFile("wishlists.csv", toCsv(all))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       {items.isLoading ? (

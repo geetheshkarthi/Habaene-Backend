@@ -16,7 +16,7 @@ import {
   deleteSavedReport,
   type SavedReport,
 } from "@/lib/api/reports";
-import { money, dateShort, toCsv, downloadFile } from "@/lib/format";
+import { money, dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { DateRangePicker, Section } from "@/components/admin/AnalyticsKit";
@@ -166,30 +166,7 @@ function CustomReports() {
       <PageHeader
         eyebrow="Analytics"
         title="Custom Reports"
-        description="Combine a metric, a dimension, a date range and a filter, then export the result."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
-            onClick={() =>
-              downloadFile(
-                `report-${metric}-by-${dimension}.csv`,
-                toCsv(
-                  rows.map((r) => ({
-                    [DIMENSIONS.find((d) => d.value === dimension)!.label]: r.label,
-                    revenue: r.revenue,
-                    orders: r.orders,
-                    units: r.units,
-                    aov: r.aov,
-                  })),
-                ),
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        }
+        description="Combine a metric, a dimension, a date range and a filter to see the result."
       />
 
       <Section title="Report Builder">

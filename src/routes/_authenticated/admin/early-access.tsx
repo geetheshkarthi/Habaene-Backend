@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getEarlyAccessList, inviteEarlyAccess, addToEarlyAccess } from "@/lib/api/marketing";
-import { dateShort, toCsv, downloadFile } from "@/lib/format";
+import { dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard } from "@/components/admin/AnalyticsKit";
@@ -86,14 +86,6 @@ function EarlyAccessPage() {
         description="Customers queued for exclusive product access and limited drops."
         actions={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!all.length}
-              onClick={() => downloadFile("early-access.csv", toCsv(all))}
-            >
-              Export CSV
-            </Button>
             <Button size="sm" onClick={() => setOpen(true)}>
               Add person
             </Button>

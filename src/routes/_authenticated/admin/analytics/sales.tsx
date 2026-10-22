@@ -11,12 +11,11 @@ import {
   YAxis,
 } from "recharts";
 import { getAnalyticsSummary, getPeriodComparison, getRevenueSeries } from "@/lib/api/analytics";
-import { money, dateShort, toCsv, downloadFile } from "@/lib/format";
+import { money, dateShort } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatCard, Section, DateRangePicker } from "@/components/admin/AnalyticsKit";
 import { useDateRange } from "@/lib/analytics-ui";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics/sales")({
   head: () => ({ meta: [{ title: "Sales Analytics — HABÄNE Admin" }] }),
@@ -54,16 +53,6 @@ function SalesAnalytics() {
         eyebrow="Analytics"
         title="Sales Analytics"
         description="Revenue, orders, discounts and tax across the selected period."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!series.data?.length}
-            onClick={() => downloadFile("sales-analytics.csv", toCsv(series.data ?? []))}
-          >
-            Export CSV
-          </Button>
-        }
       />
 
       <DateRangePicker {...pickerProps} />

@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getSubscribers, setSubscriberActive, deleteSubscriber } from "@/lib/api/newsletter";
-import { dateTime, downloadFile, toCsv } from "@/lib/format";
+import { dateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/admin/DataStates";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -63,33 +63,12 @@ function NewsletterPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function exportCsv() {
-    const rows = (subs.data ?? []).map((s) => ({
-      email: s.email,
-      active: s.is_active,
-      subscribed_at: s.subscribed_at,
-      consent_text: s.consent_text,
-      unsubscribed_at: s.unsubscribed_at,
-      source: s.source,
-    }));
-    if (rows.length === 0) {
-      toast.error("Nothing to export");
-      return;
-    }
-    downloadFile("habaene-newsletter.csv", toCsv(rows));
-  }
-
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Audience"
         title="Newsletter"
         description="Consent records are retained as proof of double opt-in. Unsubscribing keeps the record; deleting removes it entirely."
-        actions={
-          <Button variant="outline" onClick={exportCsv}>
-            Export CSV
-          </Button>
-        }
       />
 
       <Input

@@ -12,7 +12,7 @@ import {
 import { getOrdersByCustomerEmail } from "@/lib/api/orders";
 import { sendCustomerMessageFn } from "@/lib/commerce.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { money, dateShort, dateTime, downloadFile, toCsv } from "@/lib/format";
+import { money, dateShort, dateTime, downloadFile } from "@/lib/format";
 import type { Address } from "@/lib/api/types";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -172,23 +172,6 @@ function CustomersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function exportAll() {
-    const rows = filtered.map((c) => ({
-      email: c.email,
-      first_name: c.first_name,
-      last_name: c.last_name,
-      segment: c.segment,
-      orders: c.order_count,
-      total_spent: c.total_spent,
-      created_at: c.created_at,
-    }));
-    if (rows.length === 0) {
-      toast.error("Nothing to export");
-      return;
-    }
-    downloadFile("habaene-customers.csv", toCsv(rows));
-  }
-
   function toggle(id: string) {
     setSelected((s) => {
       const next = new Set(s);
@@ -204,11 +187,6 @@ function CustomersPage() {
         eyebrow="People"
         title="Customers"
         description="Every signed-in account shows up here the moment they log in — Google, email OTP, or an order as a guest. Deleting a customer removes them from this list; their orders are kept for accounting."
-        actions={
-          <Button variant="outline" onClick={exportAll}>
-            Export CSV
-          </Button>
-        }
       />
 
       <div className="flex flex-wrap gap-2">
