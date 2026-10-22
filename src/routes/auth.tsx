@@ -49,7 +49,7 @@ function AuthPage() {
     e.preventDefault();
     const email = resetEmail.trim();
     if (!email.includes("@")) {
-      toast.error("Password reset emails need an email address. If you sign in with a User ID, ask your administrator to change your password.");
+      toast.error("Password reset is only for the main administrator's email. If you sign in with a User ID, ask the main administrator to change your password.");
       return;
     }
     if (!z.string().email().safeParse(email).success) {

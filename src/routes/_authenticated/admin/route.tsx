@@ -47,7 +47,7 @@ const GROUP_PERMS: Record<string, string> = {
   Content: "content",
   "Visitor Insights": "insights",
   SEO: "seo",
-  Administration: "self",
+  Administration: "super",
   Inbox: "inbox",
 };
 
@@ -165,7 +165,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Shield,
     items: [
       { to: "/admin/team", label: "Admin Roles", perm: "super" },
-      { to: "/admin/change-password", label: "Passwords" },
+      { to: "/admin/change-password", label: "Passwords", perm: "super" },
     ],
   },
   {

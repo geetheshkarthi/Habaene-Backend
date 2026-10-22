@@ -372,8 +372,8 @@ function AdminRolesPage() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Everyone can change their own password. Roles and users can only be managed by main
-                  administrators.
+                  Only main administrators can change passwords, manage roles and add users — staff
+                  ask a main administrator to change theirs.
                 </p>
               </div>
             </div>
@@ -415,7 +415,7 @@ function AdminRolesPage() {
                 onChange={(e) => setUser({ ...user, loginId: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                What they type to sign in. Letters, numbers and . _ - only (an email address also works).
+                What they type to sign in. Letters, numbers and . _ - only.
               </p>
             </div>
             <div className="space-y-2">
@@ -426,7 +426,10 @@ function AdminRolesPage() {
                 value={user.password}
                 onChange={(e) => setUser({ ...user, password: e.target.value })}
               />
-              <p className="text-xs text-muted-foreground">At least 8 characters. Share it with them privately.</p>
+              <p className="text-xs text-muted-foreground">
+                At least 8 characters. Share it with them privately — they can't change it themselves;
+                you can change it any time from this page.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Role</Label>

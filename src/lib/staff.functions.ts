@@ -17,7 +17,7 @@ const loginIdSchema = z
   .trim()
   .min(3, "User ID must be at least 3 characters")
   .max(60)
-  .regex(/^[A-Za-z0-9._@+-]+$/, "User ID can use letters, numbers and . _ - @ + only");
+  .regex(/^[A-Za-z0-9._-]+$/, "User ID can use letters, numbers and . _ - only (no @)");
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(200);
 
 /** Create a staff login (User ID + password) with a role. */

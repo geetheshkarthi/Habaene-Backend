@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyPermissions } from "@/lib/api/staff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,19 +22,37 @@ const MIN_LENGTH = 8;
 function ResetPasswordPage() {
   const navigate = useNavigate();
   // "checking" until the recovery link has been turned into a session.
-  const [state, setState] = useState<"checking" | "ready" | "invalid">("checking");
+  const [state, setState] = useState<"checking" | "ready" | "invalid" | "blocked">("checking");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Only main administrators may set a password here; staff passwords are managed
+    // by a main administrator from Admin Roles.
+    async function allowIfMainAdmin() {
+      try {
+        const perms = await getMyPermissions();
+        if (perms.includes("*")) {
+          setState("ready");
+        } else {
+          setState("blocked");
+          await supabase.auth.signOut();
+        }
+      } catch {
+        setState("invalid");
+      }
+    }
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) setState("ready");
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        void allowIfMainAdmin();
+      }
     });
     // The link's token is processed on load; if nothing arrives, the link is bad or expired.
     const timer = window.setTimeout(async () => {
       const { data } = await supabase.auth.getSession();
-      setState((s) => (s === "checking" ? (data.session ? "ready" : "invalid") : s));
+      if (data.session) await allowIfMainAdmin();
+      else setState((s) => (s === "checking" ? "invalid" : s));
     }, 2500);
     return () => {
       sub.subscription.unsubscribe();
@@ -77,6 +96,17 @@ function ResetPasswordPage() {
           <div className="mt-6 space-y-4">
             <p className="text-sm text-muted-foreground">
               This reset link is invalid or has expired. Request a new one from the sign-in page.
+            </p>
+            <Button asChild className="w-full">
+              <Link to="/auth">Back to sign in</Link>
+            </Button>
+          </div>
+        )}
+
+        {state === "blocked" && (
+          <div className="mt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Only the main administrator can change passwords. Please ask them to change yours.
             </p>
             <Button asChild className="w-full">
               <Link to="/auth">Back to sign in</Link>
