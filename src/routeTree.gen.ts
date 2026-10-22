@@ -64,6 +64,9 @@ import { Route as AuthenticatedAdminCmsJournalRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminCmsMediaRouteImport } from './routes/_authenticated/admin/cms/media'
 import { Route as AuthenticatedAdminCmsNavigationRouteImport } from './routes/_authenticated/admin/cms/navigation'
 import { Route as AuthenticatedAdminCmsPagesRouteImport } from './routes/_authenticated/admin/cms/pages'
+import { Route as AuthenticatedAdminInsightsPagesRouteImport } from './routes/_authenticated/admin/insights/pages'
+import { Route as AuthenticatedAdminInsightsProductsRouteImport } from './routes/_authenticated/admin/insights/products'
+import { Route as AuthenticatedAdminInsightsVisitorsRouteImport } from './routes/_authenticated/admin/insights/visitors'
 import { Route as AuthenticatedAdminSeoIndexRouteImport } from './routes/_authenticated/admin/seo/index'
 import { Route as AuthenticatedAdminSeoRedirectsRouteImport } from './routes/_authenticated/admin/seo/redirects'
 import { Route as AuthenticatedAdminSeoSearchAnalyticsRouteImport } from './routes/_authenticated/admin/seo/search-analytics'
@@ -385,6 +388,24 @@ const AuthenticatedAdminCmsPagesRoute =
     path: '/cms/pages',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminInsightsPagesRoute =
+  AuthenticatedAdminInsightsPagesRouteImport.update({
+    id: '/insights/pages',
+    path: '/insights/pages',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminInsightsProductsRoute =
+  AuthenticatedAdminInsightsProductsRouteImport.update({
+    id: '/insights/products',
+    path: '/insights/products',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminInsightsVisitorsRoute =
+  AuthenticatedAdminInsightsVisitorsRouteImport.update({
+    id: '/insights/visitors',
+    path: '/insights/visitors',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminSeoIndexRoute =
   AuthenticatedAdminSeoIndexRouteImport.update({
     id: '/seo/',
@@ -463,6 +484,9 @@ export interface FileRoutesByFullPath {
   '/admin/cms/media': typeof AuthenticatedAdminCmsMediaRoute
   '/admin/cms/navigation': typeof AuthenticatedAdminCmsNavigationRoute
   '/admin/cms/pages': typeof AuthenticatedAdminCmsPagesRoute
+  '/admin/insights/pages': typeof AuthenticatedAdminInsightsPagesRoute
+  '/admin/insights/products': typeof AuthenticatedAdminInsightsProductsRoute
+  '/admin/insights/visitors': typeof AuthenticatedAdminInsightsVisitorsRoute
   '/admin/seo/redirects': typeof AuthenticatedAdminSeoRedirectsRoute
   '/admin/seo/search-analytics': typeof AuthenticatedAdminSeoSearchAnalyticsRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -522,6 +546,9 @@ export interface FileRoutesByTo {
   '/admin/cms/media': typeof AuthenticatedAdminCmsMediaRoute
   '/admin/cms/navigation': typeof AuthenticatedAdminCmsNavigationRoute
   '/admin/cms/pages': typeof AuthenticatedAdminCmsPagesRoute
+  '/admin/insights/pages': typeof AuthenticatedAdminInsightsPagesRoute
+  '/admin/insights/products': typeof AuthenticatedAdminInsightsProductsRoute
+  '/admin/insights/visitors': typeof AuthenticatedAdminInsightsVisitorsRoute
   '/admin/seo/redirects': typeof AuthenticatedAdminSeoRedirectsRoute
   '/admin/seo/search-analytics': typeof AuthenticatedAdminSeoSearchAnalyticsRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -584,6 +611,9 @@ export interface FileRoutesById {
   '/_authenticated/admin/cms/media': typeof AuthenticatedAdminCmsMediaRoute
   '/_authenticated/admin/cms/navigation': typeof AuthenticatedAdminCmsNavigationRoute
   '/_authenticated/admin/cms/pages': typeof AuthenticatedAdminCmsPagesRoute
+  '/_authenticated/admin/insights/pages': typeof AuthenticatedAdminInsightsPagesRoute
+  '/_authenticated/admin/insights/products': typeof AuthenticatedAdminInsightsProductsRoute
+  '/_authenticated/admin/insights/visitors': typeof AuthenticatedAdminInsightsVisitorsRoute
   '/_authenticated/admin/seo/redirects': typeof AuthenticatedAdminSeoRedirectsRoute
   '/_authenticated/admin/seo/search-analytics': typeof AuthenticatedAdminSeoSearchAnalyticsRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -646,6 +676,9 @@ export interface FileRouteTypes {
     | '/admin/cms/media'
     | '/admin/cms/navigation'
     | '/admin/cms/pages'
+    | '/admin/insights/pages'
+    | '/admin/insights/products'
+    | '/admin/insights/visitors'
     | '/admin/seo/redirects'
     | '/admin/seo/search-analytics'
     | '/api/public/v1/$'
@@ -705,6 +738,9 @@ export interface FileRouteTypes {
     | '/admin/cms/media'
     | '/admin/cms/navigation'
     | '/admin/cms/pages'
+    | '/admin/insights/pages'
+    | '/admin/insights/products'
+    | '/admin/insights/visitors'
     | '/admin/seo/redirects'
     | '/admin/seo/search-analytics'
     | '/api/public/v1/$'
@@ -766,6 +802,9 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/cms/media'
     | '/_authenticated/admin/cms/navigation'
     | '/_authenticated/admin/cms/pages'
+    | '/_authenticated/admin/insights/pages'
+    | '/_authenticated/admin/insights/products'
+    | '/_authenticated/admin/insights/visitors'
     | '/_authenticated/admin/seo/redirects'
     | '/_authenticated/admin/seo/search-analytics'
     | '/api/public/v1/$'
@@ -1175,6 +1214,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCmsPagesRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/insights/pages': {
+      id: '/_authenticated/admin/insights/pages'
+      path: '/insights/pages'
+      fullPath: '/admin/insights/pages'
+      preLoaderRoute: typeof AuthenticatedAdminInsightsPagesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/insights/products': {
+      id: '/_authenticated/admin/insights/products'
+      path: '/insights/products'
+      fullPath: '/admin/insights/products'
+      preLoaderRoute: typeof AuthenticatedAdminInsightsProductsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/admin/insights/visitors': {
+      id: '/_authenticated/admin/insights/visitors'
+      path: '/insights/visitors'
+      fullPath: '/admin/insights/visitors'
+      preLoaderRoute: typeof AuthenticatedAdminInsightsVisitorsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/seo/': {
       id: '/_authenticated/admin/seo/'
       path: '/seo'
@@ -1249,6 +1309,9 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminCmsMediaRoute: typeof AuthenticatedAdminCmsMediaRoute
   AuthenticatedAdminCmsNavigationRoute: typeof AuthenticatedAdminCmsNavigationRoute
   AuthenticatedAdminCmsPagesRoute: typeof AuthenticatedAdminCmsPagesRoute
+  AuthenticatedAdminInsightsPagesRoute: typeof AuthenticatedAdminInsightsPagesRoute
+  AuthenticatedAdminInsightsProductsRoute: typeof AuthenticatedAdminInsightsProductsRoute
+  AuthenticatedAdminInsightsVisitorsRoute: typeof AuthenticatedAdminInsightsVisitorsRoute
   AuthenticatedAdminSeoRedirectsRoute: typeof AuthenticatedAdminSeoRedirectsRoute
   AuthenticatedAdminSeoSearchAnalyticsRoute: typeof AuthenticatedAdminSeoSearchAnalyticsRoute
   AuthenticatedAdminAnalyticsIndexRoute: typeof AuthenticatedAdminAnalyticsIndexRoute
@@ -1312,6 +1375,11 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminCmsMediaRoute: AuthenticatedAdminCmsMediaRoute,
     AuthenticatedAdminCmsNavigationRoute: AuthenticatedAdminCmsNavigationRoute,
     AuthenticatedAdminCmsPagesRoute: AuthenticatedAdminCmsPagesRoute,
+    AuthenticatedAdminInsightsPagesRoute: AuthenticatedAdminInsightsPagesRoute,
+    AuthenticatedAdminInsightsProductsRoute:
+      AuthenticatedAdminInsightsProductsRoute,
+    AuthenticatedAdminInsightsVisitorsRoute:
+      AuthenticatedAdminInsightsVisitorsRoute,
     AuthenticatedAdminSeoRedirectsRoute: AuthenticatedAdminSeoRedirectsRoute,
     AuthenticatedAdminSeoSearchAnalyticsRoute:
       AuthenticatedAdminSeoSearchAnalyticsRoute,

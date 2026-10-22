@@ -969,6 +969,35 @@ export async function trackProductView(body: Record<string, unknown>) {
   return { tracked: true };
 }
 
+const PAGE_TYPES = ["home", "shop", "product", "checkout", "journal", "info", "other"];
+
+/** One page visit (or a later chunk of the same visit): time on page + scroll depth. */
+export async function trackPageVisit(body: Record<string, unknown>) {
+  const clamp = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
+  const text = (v: unknown, max: number) => (v ? String(v).slice(0, max) : null);
+  const pageType = PAGE_TYPES.includes(String(body["page_type"])) ? String(body["page_type"]) : "other";
+  const device = ["mobile", "tablet", "desktop"].includes(String(body["device"])) ? String(body["device"]) : null;
+  const productId = String(body["product_id"] ?? "");
+  const visitId = text(body["visit_id"], 64);
+  const sessionId = text(body["session_id"], 64);
+  if (!visitId || !sessionId) throw badRequest("visit_id and session_id are required");
+
+  const { error } = await db.from("page_visits").insert({
+    visit_id: visitId,
+    session_id: sessionId,
+    page_type: pageType,
+    path: text(body["path"], 200) ?? "/",
+    product_id: /^[0-9a-f-]{36}$/i.test(productId) ? productId : null,
+    seconds: clamp(body["seconds"], 3600),
+    max_scroll: clamp(body["max_scroll"], 100),
+    referrer: text(body["referrer"], 300),
+    device,
+    country_code: text(body["country_code"], 2),
+  });
+  if (error) throw new Error(error.message);
+  return { tracked: true };
+}
+
 export async function trackSearch(body: Record<string, unknown>) {
   const { error } = await db.from("search_logs").insert({
     query: String(body["query"] ?? ""),

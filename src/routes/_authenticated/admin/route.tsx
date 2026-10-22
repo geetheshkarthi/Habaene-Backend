@@ -17,6 +17,7 @@ import {
   Tag,
   ChevronDown,
   Shield,
+  Eye,
 } from "lucide-react";
 import { useState } from "react";
 import { useIsAdmin, signOut } from "@/hooks/useAdmin";
@@ -86,6 +87,15 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/admin/cms/find-your-object", label: "Find Your Object" },
       { to: "/admin/cms/journal", label: "Journal" },
       { to: "/admin/cms/faq", label: "FAQ" },
+    ],
+  },
+  {
+    label: "Visitor Insights",
+    icon: Eye,
+    items: [
+      { to: "/admin/insights/products", label: "Product Interest" },
+      { to: "/admin/insights/pages", label: "Pages & Time" },
+      { to: "/admin/insights/visitors", label: "Visitors" },
     ],
   },
   {

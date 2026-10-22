@@ -98,6 +98,7 @@ export async function dispatch(request: Request, path: string): Promise<Response
         if (second === "cart") return ok(await h.trackCartEvent(trackBody));
         if (second === "view") return ok(await h.trackProductView(trackBody));
         if (second === "search") return ok(await h.trackSearch(trackBody));
+        if (second === "page") return ok(await h.trackPageVisit(trackBody));
         return fail(404, "not_found", `Unknown track endpoint /track/${second}`);
       }
 
