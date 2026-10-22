@@ -133,7 +133,7 @@ function NavGroupItem({ group }: { group: NavGroup }) {
     <div className="mb-1">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs uppercase tracking-wider text-white font-bold hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
         <span className="flex items-center gap-2">
           <Icon className="h-3.5 w-3.5" />
@@ -147,7 +147,7 @@ function NavGroupItem({ group }: { group: NavGroup }) {
             <Link
               key={item.to}
               to={item.to}
-              className="rounded-md px-2 py-1.5 text-sm text-white font-bold transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
+              className="rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
             >
               {item.label}
             </Link>
@@ -194,7 +194,7 @@ function AdminLayout() {
               <img src="/brand/icon-white.png" alt="" className="h-[22px] w-auto" />
               <img src="/brand/wordmark-white.png" alt="HABÄNE" className="h-[13px] w-auto" />
             </span>
-            <span className="block text-[10px] tracking-[0.2em] text-white font-bold uppercase">
+            <span className="block text-[10px] tracking-[0.2em] text-sidebar-foreground/50 uppercase">
               Admin console
             </span>
           </Link>
@@ -204,7 +204,7 @@ function AdminLayout() {
           <Link
             to="/admin"
             activeOptions={{ exact: true }}
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white font-bold transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground mb-2"
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground mb-2"
           >
             <LayoutDashboard className="h-4 w-4" />
             Dashboard
@@ -215,13 +215,13 @@ function AdminLayout() {
         </nav>
 
         <div className="border-t border-sidebar-border px-4 py-4">
-          <p className="truncate px-1 text-xs text-white font-bold">{user?.email}</p>
+          <p className="truncate px-1 text-xs text-sidebar-foreground/60">{user?.email}</p>
           <button
             onClick={async () => {
               await signOut();
               navigate({ to: "/auth" });
             }}
-            className="mt-2 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-white font-bold transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="mt-2 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -234,25 +234,25 @@ function AdminLayout() {
         <nav className="flex gap-1 overflow-x-auto border-b border-border bg-sidebar px-4 py-2 md:hidden">
           <Link
             to="/admin"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-white font-bold data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
+            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
           >
             Dashboard
           </Link>
           <Link
             to="/admin/orders"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-white font-bold data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
+            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
           >
             Orders
           </Link>
           <Link
             to="/admin/products"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-white font-bold data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
+            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
           >
             Products
           </Link>
           <Link
             to="/admin/customers"
-            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-white font-bold data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
+            className="rounded-md px-3 py-1.5 text-xs whitespace-nowrap text-sidebar-foreground/70 data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-accent-foreground"
           >
             Customers
           </Link>
