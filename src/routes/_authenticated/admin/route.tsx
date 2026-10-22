@@ -214,7 +214,7 @@ function NavGroupItem({ group }: { group: NavGroup }) {
 
 function AdminLayout() {
   const { user, isAdmin, loading } = useIsAdmin();
-  const permsQuery = usePermissions(isAdmin);
+  const permsQuery = usePermissions(user?.id);
   const perms = permsQuery.data;
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (st) => st.location.pathname });
@@ -235,7 +235,9 @@ function AdminLayout() {
     }
   }, [perms, pathname, canDashboard, firstAllowed, navigate]);
 
-  if (loading || (isAdmin && permsQuery.isLoading)) return <LoadingState label="Checking access…" />;
+  if (loading || (!!user && permsQuery.isPending)) {
+    return <LoadingState label="Checking access…" />;
+  }
 
   if (!isAdmin) {
     return (

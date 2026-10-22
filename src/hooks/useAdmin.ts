@@ -10,9 +10,9 @@ export function useCurrentUser() {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setUser(data.user ?? null);
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -53,11 +53,10 @@ export function useIsAdmin() {
 }
 
 /** What the signed-in user may open: ["*"] for main administrators, else their role's list. */
-export function usePermissions(enabled = true) {
-  const { user } = useCurrentUser();
+export function usePermissions(userId: string | undefined) {
   return useQuery({
-    queryKey: ["my-permissions", user?.id],
-    enabled: enabled && !!user,
+    queryKey: ["my-permissions", userId],
+    enabled: !!userId,
     queryFn: getMyPermissions,
   });
 }
